@@ -21,6 +21,8 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    min-width: 0;
+    overflow: hidden;
     transition: border-color 0.15s ease, transform 0.15s ease;
 }
 
@@ -29,9 +31,16 @@
     transform: translateY(-2px);
 }
 
+.bank-card-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
 .bank-card-icon {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: var(--radius-sm);
     background: var(--surface-raised);
     border: 1px solid var(--border);
@@ -39,12 +48,24 @@
     align-items: center;
     justify-content: center;
     color: var(--accent);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.bank-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
 }
 
 .bank-card-body {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    min-width: 0;
+    flex: 1 1 0;
+    overflow: hidden;
 }
 
 .bank-card-body h4 {
@@ -52,11 +73,69 @@
 }
 
 .bank-id {
+    display: block;
     font-size: 11px;
     color: var(--text-muted);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    max-width: 100%;
+}
+
+.bank-logo-menu {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.bank-logo-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    background: var(--surface-raised);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    min-width: 140px;
+    animation: dropdown-in 0.12s ease;
+}
+
+.bank-logo-dropdown button {
+    background: transparent;
+    border: none;
+    text-align: left;
+    padding: 9px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: var(--font-display);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+}
+
+.bank-logo-dropdown button:hover:not(:disabled) {
+    background: var(--surface);
+    color: var(--accent);
+}
+
+.bank-logo-dropdown button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@keyframes dropdown-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .bank-card-footer {
