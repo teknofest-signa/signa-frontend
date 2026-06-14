@@ -89,12 +89,20 @@ const Banks = () => {
             </div>
 
             {loading ? (
-                <Card className="banks-empty-card">
-                    <div className="banks-empty">
-                        <span className="loading-spinner" />
-                        <p>Loading banks…</p>
-                    </div>
-                </Card>
+                <div className="banks-grid">
+                    {[...Array(4)].map((_, i) => (
+                        <Card className="bank-card bank-card-skeleton" key={i}>
+                            <div className="skeleton skeleton-icon" />
+                            <div className="bank-card-body">
+                                <div className="skeleton skeleton-title" />
+                                <div className="skeleton skeleton-id" />
+                            </div>
+                            <div className="bank-card-footer">
+                                <div className="skeleton skeleton-date" />
+                            </div>
+                        </Card>
+                    ))}
+                </div>
             ) : loadError ? (
                 <Card className="banks-empty-card">
                     <div className="banks-empty">

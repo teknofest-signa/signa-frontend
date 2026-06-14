@@ -137,6 +137,29 @@
     padding: 3px 10px;
 }
 
+.module-card-link {
+    cursor: pointer;
+}
+
+.module-card-link:hover {
+    border-color: var(--accent-dim);
+    background: var(--accent-glow);
+}
+
+.module-card-link:hover .module-icon {
+    background: var(--accent-glow);
+    border-color: var(--accent-dim);
+}
+
+.module-badge-active {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--accent);
+    border-color: var(--accent-dim);
+    background: var(--accent-glow);
+}
+
 @media (max-width: 760px) {
     .welcome-card {
         flex-direction: column;
