@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Overview from './pages/Overview';
 import ManageAdmins from './pages/ManageAdmins';
+import Banks from './pages/Banks';
 
 const LoginRoute = () => {
     const { isAuthenticated, loading } = useAuth();
@@ -36,6 +37,25 @@ const App = () => {
                             element={
                                 <ProtectedRoute requireSuperAdmin>
                                     <ManageAdmins />
+                                </ProtectedRoute>
+                            }
+                        />
+                    </Route>
+
+                    <Route
+                        path="/"
+                        element={
+                            <ProtectedRoute>
+                                <DashboardLayout />
+                            </ProtectedRoute>
+                        }
+                    >
+                        <Route index element={<Banks />} />
+                        <Route
+                            path="banks"
+                            element={
+                                <ProtectedRoute requireSuperAdmin>
+                                    <Banks />
                                 </ProtectedRoute>
                             }
                         />

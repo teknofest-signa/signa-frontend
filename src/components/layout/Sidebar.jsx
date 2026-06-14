@@ -7,13 +7,16 @@ const navItems = [
         items: [{ to: '/', label: 'Dashboard', icon: 'grid' }],
     },
     {
+        section: 'Network',
+        items: [{ to: '/banks', label: 'Banks', icon: 'bank' }],
+    },
+    {
         section: 'Access control',
         items: [{ to: '/admins', label: 'Manage admins', icon: 'users', requireSuperAdmin: true }],
     },
     {
         section: 'Coming soon',
         items: [
-            { to: '#', label: 'Banks', icon: 'bank', disabled: true },
             { to: '#', label: 'Transactions', icon: 'pulse', disabled: true },
             { to: '#', label: 'AI risk engine', icon: 'shield', disabled: true },
             { to: '#', label: 'Blocked users', icon: 'lock', disabled: true },

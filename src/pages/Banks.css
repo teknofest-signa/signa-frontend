@@ -1,0 +1,73 @@
+@import './ManageAdmins.css';
+
+.banks-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.banks-empty-card {
+    overflow: hidden;
+}
+
+.banks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.bank-card {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.bank-card:hover {
+    border-color: var(--accent-dim);
+    transform: translateY(-2px);
+}
+
+.bank-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+}
+
+.bank-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bank-card-body h4 {
+    font-size: 16px;
+}
+
+.bank-id {
+    font-size: 11px;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bank-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-soft);
+}
+
+.bank-date {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
