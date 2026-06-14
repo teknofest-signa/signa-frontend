@@ -7,6 +7,7 @@ import Register from './pages/Register';
 import Overview from './pages/Overview';
 import ManageAdmins from './pages/ManageAdmins';
 import Banks from './pages/Banks';
+import Transactions from './pages/Transactions';
 
 const LoginRoute = () => {
     const { isAuthenticated, loading } = useAuth();
@@ -42,23 +43,9 @@ const App = () => {
                         />
                     </Route>
 
-                    <Route
-                        path="/"
-                        element={
-                            <ProtectedRoute>
-                                <DashboardLayout />
-                            </ProtectedRoute>
-                        }
-                    >
-                        <Route index element={<Banks />} />
-                        <Route
-                            path="banks"
-                            element={
-                                <ProtectedRoute requireSuperAdmin>
-                                    <Banks />
-                                </ProtectedRoute>
-                            }
-                        />
+                    <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+                        <Route path="banks" element={<Banks />}/>
+                        <Route path="transactions" element={<Transactions />} />
                     </Route>
 
                     <Route path="*" element={<Navigate to="/" replace />} />
