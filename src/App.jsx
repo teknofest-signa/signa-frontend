@@ -8,7 +8,8 @@ import Overview from './pages/Overview';
 import ManageAdmins from './pages/ManageAdmins';
 
 const LoginRoute = () => {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, loading } = useAuth();
+    if (loading) return null;
     if (isAuthenticated) return <Navigate to="/" replace />;
     return <Login />;
 };
@@ -19,7 +20,7 @@ const App = () => {
             <BrowserRouter>
                 <Routes>
                     <Route path="/login" element={<LoginRoute />} />
-                    <Route path="/register" element={<Register />} />
+                    <Route path="/admin-register" element={<Register />} />
 
                     <Route
                         path="/"

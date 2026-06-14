@@ -63,7 +63,7 @@ const Login = () => {
                         name="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@signa.io"
+                        placeholder="you@signa.com"
                         autoComplete="email"
                         required
                     />
@@ -80,7 +80,7 @@ const Login = () => {
                     />
 
                     <Button type="submit" fullWidth loading={loading} className="auth-submit">
-                        Sign in
+                        Sign In
                     </Button>
                 </form>
 
