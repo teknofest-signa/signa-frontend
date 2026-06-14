@@ -6,19 +6,15 @@
 
 .transactions-toolbar {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-    padding: 14px 18px;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px 18px;
 }
 
 .transactions-search {
     display: flex;
     align-items: center;
     gap: 10px;
-    flex: 1;
-    min-width: 240px;
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -51,34 +47,73 @@
     color: var(--text-muted);
 }
 
-.transactions-filters {
+.search-clear {
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.search-clear:hover {
+    color: var(--text-primary);
+    background: var(--surface-raised);
+}
+
+.transactions-filters {
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
     flex-wrap: wrap;
 }
 
-.transactions-filters .field {
-    min-width: 150px;
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 160px;
+}
+
+.filter-label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.filter-group .field-input {
+    padding: 9px 14px;
+    font-size: 13px;
 }
 
 .filters-clear {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     background: transparent;
-    border: 1px solid var(--border);
+    border: 1px solid transparent;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 11px 14px;
+    padding: 9px 12px;
     border-radius: var(--radius-sm);
     font-size: 13px;
     font-family: inherit;
     transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
     white-space: nowrap;
+    height: fit-content;
 }
 
 .filters-clear:hover {
-    color: var(--accent);
-    border-color: var(--accent-dim);
-    background: var(--accent-glow);
+    color: var(--danger);
+    border-color: var(--danger-dim);
+    background: rgba(248, 113, 113, 0.06);
 }
 
 .transactions-card {
@@ -187,6 +222,123 @@
     }
 }
 
+/* Pagination footer */
+
+.transactions-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border-soft);
+}
+
+.pagination-info {
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.pagination-info strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.pagination-filtered {
+    color: var(--text-muted);
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.pager-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.pager-btn:hover:not(:disabled) {
+    color: var(--accent);
+    border-color: var(--accent-dim);
+    background: var(--accent-glow);
+}
+
+.pager-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.pager-pages {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 4px;
+}
+
+.pager-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 6px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-family: var(--font-mono);
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.pager-page:hover {
+    color: var(--text-primary);
+    background: var(--surface-raised);
+}
+
+.pager-page-active {
+    color: var(--accent);
+    border-color: var(--accent-dim);
+    background: var(--accent-glow);
+}
+
+.pager-ellipsis {
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 0 2px;
+    font-family: var(--font-mono);
+}
+
+.pagination-size .field-input {
+    padding: 7px 12px;
+    font-size: 13px;
+}
+
+.pagination-size .field-select {
+    padding-right: 30px;
+}
+
+.pagination-size .select-chevron {
+    right: 10px;
+}
+
+/* Transaction detail modal */
+
 .tx-detail {
     display: flex;
     flex-direction: column;
@@ -234,5 +386,14 @@
 
     .tx-detail-grid {
         grid-template-columns: 1fr;
+    }
+
+    .transactions-pagination {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .pagination-controls {
+        order: -1;
     }
 }
