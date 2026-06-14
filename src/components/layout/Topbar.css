@@ -72,7 +72,7 @@
     background: var(--surface-raised);
     border: 1px solid var(--border-soft);
     border-radius: var(--radius-md);
-    width: 268px;
+    width: min(268px, calc(100vw - 32px));
     box-shadow: var(--shadow-card);
     overflow: hidden;
     animation: dropdown-in 0.12s ease;
@@ -97,17 +97,13 @@
 .user-dropdown-email {
     font-size: 13px;
     color: var(--text-primary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    word-break: break-all;
 }
 
 .user-dropdown-id {
     font-size: 11px;
     color: var(--text-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    word-break: break-all;
 }
 
 .user-dropdown-error {
