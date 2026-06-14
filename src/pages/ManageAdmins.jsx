@@ -5,7 +5,8 @@ import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
-import { createAdmin, getAdmins, updateAdmin, deleteAdmin } from '../api/superAdmin';
+import Avatar from '../components/ui/Avatar';
+import { createAdmin, getAdmins, getAdmin, updateAdmin, deleteAdmin } from '../api/superAdmin';
 import './ManageAdmins.css';
 
 const statusVariant = {
@@ -16,6 +17,7 @@ const statusVariant = {
 
 const statusOptions = [
     { value: 'ACTIVE', label: 'Active' },
+    { value: 'PENDING', label: 'Pending' },
     { value: 'INACTIVE', label: 'Inactive' },
 ];
 
@@ -40,6 +42,11 @@ const ManageAdmins = () => {
 
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
+
+    const [detailTarget, setDetailTarget] = useState(null);
+    const [detailData, setDetailData] = useState(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [detailError, setDetailError] = useState('');
 
     const fetchAdmins = async () => {
         setLoading(true);
@@ -136,6 +143,27 @@ const ManageAdmins = () => {
         }
     };
 
+    const openDetailModal = async (admin) => {
+        setDetailTarget(admin);
+        setDetailData(null);
+        setDetailError('');
+        setDetailLoading(true);
+        try {
+            const { data } = await getAdmin(admin.id);
+            setDetailData(data);
+        } catch (err) {
+            setDetailError('Could not load admin details.');
+        } finally {
+            setDetailLoading(false);
+        }
+    };
+
+    const closeDetailModal = () => {
+        setDetailTarget(null);
+        setDetailData(null);
+        setDetailError('');
+    };
+
     return (
         <div className="manage-admins">
             <div className="page-header">
@@ -191,7 +219,7 @@ const ManageAdmins = () => {
                             <tr key={admin.id}>
                                 <td>
                                     <div className="admin-identity">
-                                        <span className="admin-avatar">{(admin.username || admin.email || '?')[0].toUpperCase()}</span>
+                                        <Avatar photo={admin.profilePhoto} name={admin.username || admin.email} size="md" />
                                         <div className="admin-identity-text">
                                             <span className="admin-username">{admin.username || '— pending —'}</span>
                                             <span className="admin-id mono">{admin.id}</span>
@@ -211,20 +239,28 @@ const ManageAdmins = () => {
                                     {admin.createdAt ? new Date(admin.createdAt).toLocaleDateString() : '—'}
                                 </td>
                                 <td>
-                                    {admin.role !== 'SUPER_ADMIN' && (
-                                        <div className="row-actions">
-                                            <button className="row-action" onClick={() => openEditModal(admin)} aria-label="Edit admin">
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                                    <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                                                </svg>
-                                            </button>
-                                            <button className="row-action row-action-danger" onClick={() => setDeleteTarget(admin)} aria-label="Remove admin">
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                                    <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    )}
+                                    <div className="row-actions">
+                                        <button className="row-action" onClick={() => openDetailModal(admin)} aria-label="View admin info">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+                                                <path d="M12 8h.01M11 12h1v4h1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                        </button>
+                                        {admin.role !== 'SUPER_ADMIN' && (
+                                            <>
+                                                <button className="row-action" onClick={() => openEditModal(admin)} aria-label="Edit admin">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                        <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                                    </svg>
+                                                </button>
+                                                <button className="row-action row-action-danger" onClick={() => setDeleteTarget(admin)} aria-label="Remove admin">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                        <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                                    </svg>
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -336,6 +372,58 @@ const ManageAdmins = () => {
                         </Button>
                     </div>
                 </div>
+            </Modal>
+
+            <Modal open={!!detailTarget} onClose={closeDetailModal} title="Admin details">
+                {detailLoading ? (
+                    <div className="admins-empty">
+                        <span className="loading-spinner" />
+                        <p>Loading details…</p>
+                    </div>
+                ) : detailError ? (
+                    <div className="admins-empty">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
+                            <path d="M12 8v5M12 16h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                        <p>{detailError}</p>
+                    </div>
+                ) : detailData ? (
+                    <div className="admin-detail">
+                        <div className="admin-detail-header">
+                            <Avatar photo={detailData.profilePhoto} name={detailData.username || detailData.email} size="xl" />
+                            <div className="admin-detail-heading">
+                                <h3>{detailData.username || '— pending —'}</h3>
+                                <span className="admin-detail-email">{detailData.email}</span>
+                                <div className="admin-detail-badges">
+                                    <Badge variant={detailData.role === 'SUPER_ADMIN' ? 'accent' : 'default'}>
+                                        {detailData.role?.replace('_', ' ')}
+                                    </Badge>
+                                    <Badge variant={statusVariant[detailData.status] || 'default'}>{detailData.status}</Badge>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="admin-detail-grid">
+                            <div className="admin-detail-item">
+                                <span className="meta-label">Admin ID</span>
+                                <span className="mono admin-detail-value">{detailData.id}</span>
+                            </div>
+                            <div className="admin-detail-item">
+                                <span className="meta-label">Created</span>
+                                <span className="admin-detail-value">
+                  {detailData.createdAt ? new Date(detailData.createdAt).toLocaleString() : '—'}
+                </span>
+                            </div>
+                            <div className="admin-detail-item">
+                                <span className="meta-label">Last updated</span>
+                                <span className="admin-detail-value">
+                  {detailData.updatedAt ? new Date(detailData.updatedAt).toLocaleString() : '—'}
+                </span>
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
             </Modal>
         </div>
     );
