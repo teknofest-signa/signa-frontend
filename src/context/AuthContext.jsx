@@ -1,12 +1,13 @@
-import { createContext, useContext, useState, useCallback } from 'react';
-import { setAccessToken } from '../api/client';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { setAccessToken, getAccessToken } from '../api/client';
 import { login as loginApi, register as registerApi, getBackofficeInfo } from '../api/auth';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-    const [token, setToken] = useState(null);
+    const [token, setToken] = useState(getAccessToken());
     const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     const loadUser = useCallback(async () => {
         try {
@@ -20,6 +21,15 @@ export const AuthProvider = ({ children }) => {
             throw err;
         }
     }, []);
+
+    useEffect(() => {
+        const existing = getAccessToken();
+        if (existing) {
+            loadUser().finally(() => setLoading(false));
+        } else {
+            setLoading(false);
+        }
+    }, [loadUser])
 
     const login = async (email, password) => {
         const { data } = await loginApi(email, password);
@@ -46,6 +56,7 @@ export const AuthProvider = ({ children }) => {
     const value = {
         token,
         user,
+        loading,
         isAuthenticated: !!token && !!user,
         login,
         register,
