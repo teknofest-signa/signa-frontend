@@ -1,0 +1,149 @@
+.overview {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.welcome-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 32px 36px;
+    gap: 24px;
+    overflow: hidden;
+    position: relative;
+}
+
+.welcome-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 560px;
+}
+
+.welcome-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+}
+
+.welcome-content h2 {
+    font-size: 26px;
+}
+
+.welcome-content p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.welcome-content p strong {
+    color: var(--text-primary);
+}
+
+.welcome-meta {
+    display: flex;
+    gap: 28px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.welcome-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.meta-label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.meta-value {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.welcome-visual {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.section-heading h3 {
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.section-heading p {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.module-card {
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: relative;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.module-card:hover {
+    border-color: var(--accent-dim);
+    transform: translateY(-2px);
+}
+
+.module-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+}
+
+.module-text h4 {
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+
+.module-text p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.module-badge {
+    align-self: flex-start;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 3px 10px;
+}
+
+@media (max-width: 760px) {
+    .welcome-card {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 24px;
+    }
+    .welcome-visual {
+        align-self: center;
+    }
+}

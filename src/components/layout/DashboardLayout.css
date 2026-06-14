@@ -1,0 +1,24 @@
+.dashboard-shell {
+    display: flex;
+    min-height: 100vh;
+    position: relative;
+    z-index: 1;
+}
+
+.dashboard-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.dashboard-content {
+    flex: 1;
+    padding: 28px 32px 48px;
+}
+
+@media (max-width: 640px) {
+    .dashboard-content {
+        padding: 20px 18px 36px;
+    }
+}
