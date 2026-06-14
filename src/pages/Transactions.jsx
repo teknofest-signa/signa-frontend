@@ -214,11 +214,11 @@ const Transactions = () => {
                                 </td>
                                 <td>
                                     <div className="tx-parties">
-                                        <span className="mono">{tx.senderId || '—'}</span>
+                                        <span className="mono">{tx.fromAccountId || '—'}</span>
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="tx-arrow">
                                             <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                                         </svg>
-                                        <span className="mono">{tx.receiverId || '—'}</span>
+                                        <span className="mono">{tx.toAccountId || '—'}</span>
                                     </div>
                                 </td>
                                 <td className="tx-amount mono">{formatAmount(tx.amount, tx.currency)}</td>
@@ -274,11 +274,11 @@ const Transactions = () => {
                             </div>
                             <div className="tx-detail-item">
                                 <span className="meta-label">Sender ID</span>
-                                <span className="mono tx-detail-value">{detailTarget.senderId || '—'}</span>
+                                <span className="mono tx-detail-value">{detailTarget.fromAccountId || '—'}</span>
                             </div>
                             <div className="tx-detail-item">
                                 <span className="meta-label">Receiver ID</span>
-                                <span className="mono tx-detail-value">{detailTarget.receiverId || '—'}</span>
+                                <span className="mono tx-detail-value">{detailTarget.toAccountId || '—'}</span>
                             </div>
                             <div className="tx-detail-item">
                                 <span className="meta-label">Amount</span>
