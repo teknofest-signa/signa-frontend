@@ -4,7 +4,8 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
-import { createAdmin, getAdmins, deleteAdmin } from '../api/superAdmin';
+import Select from '../components/ui/Select';
+import { createAdmin, getAdmins, updateAdmin, deleteAdmin } from '../api/superAdmin';
 import './ManageAdmins.css';
 
 const statusVariant = {
@@ -12,6 +13,11 @@ const statusVariant = {
     PENDING: 'warning',
     INACTIVE: 'danger',
 };
+
+const statusOptions = [
+    { value: 'ACTIVE', label: 'Active' },
+    { value: 'INACTIVE', label: 'Inactive' },
+];
 
 const ManageAdmins = () => {
     const [admins, setAdmins] = useState([]);
@@ -23,6 +29,14 @@ const ManageAdmins = () => {
     const [inviteLoading, setInviteLoading] = useState(false);
     const [inviteError, setInviteError] = useState('');
     const [inviteSuccess, setInviteSuccess] = useState('');
+
+    const [editTarget, setEditTarget] = useState(null);
+    const [editEmail, setEditEmail] = useState('');
+    const [editUsername, setEditUsername] = useState('');
+    const [editStatus, setEditStatus] = useState('ACTIVE');
+    const [editPassword, setEditPassword] = useState('');
+    const [editLoading, setEditLoading] = useState(false);
+    const [editError, setEditError] = useState('');
 
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
@@ -67,6 +81,45 @@ const ManageAdmins = () => {
         setInviteError('');
         setInviteSuccess('');
         setInviteEmail('');
+    };
+
+    const openEditModal = (admin) => {
+        setEditTarget(admin);
+        setEditEmail(admin.email || '');
+        setEditUsername(admin.username || '');
+        setEditStatus(admin.status || 'ACTIVE');
+        setEditPassword('');
+        setEditError('');
+    };
+
+    const closeEditModal = () => {
+        setEditTarget(null);
+        setEditError('');
+        setEditPassword('');
+    };
+
+    const handleEdit = async (e) => {
+        e.preventDefault();
+        if (!editTarget) return;
+        setEditError('');
+        setEditLoading(true);
+        try {
+            const payload = {
+                email: editEmail,
+                username: editUsername,
+                status: editStatus,
+            };
+            if (editPassword.trim()) {
+                payload.password = editPassword;
+            }
+            await updateAdmin(editTarget.id, payload);
+            closeEditModal();
+            fetchAdmins();
+        } catch (err) {
+            setEditError(err?.response?.data?.message || 'Could not update this admin. Please try again.');
+        } finally {
+            setEditLoading(false);
+        }
     };
 
     const handleDelete = async () => {
@@ -159,11 +212,18 @@ const ManageAdmins = () => {
                                 </td>
                                 <td>
                                     {admin.role !== 'SUPER_ADMIN' && (
-                                        <button className="row-action" onClick={() => setDeleteTarget(admin)} aria-label="Remove admin">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                                <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                                            </svg>
-                                        </button>
+                                        <div className="row-actions">
+                                            <button className="row-action" onClick={() => openEditModal(admin)} aria-label="Edit admin">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                    <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                                </svg>
+                                            </button>
+                                            <button className="row-action row-action-danger" onClick={() => setDeleteTarget(admin)} aria-label="Remove admin">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                    <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     )}
                                 </td>
                             </tr>
@@ -198,6 +258,64 @@ const ManageAdmins = () => {
                         </Button>
                         <Button type="submit" loading={inviteLoading}>
                             Send invite
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
+
+            <Modal open={!!editTarget} onClose={closeEditModal} title="Edit admin">
+                <form className="invite-form" onSubmit={handleEdit}>
+                    <p className="invite-desc">
+                        Update <strong>{editTarget?.username || editTarget?.email}</strong>'s account details and access status.
+                    </p>
+
+                    {editError && <div className="invite-message invite-message-error">{editError}</div>}
+
+                    <Input
+                        label="Email address"
+                        type="email"
+                        name="edit-email"
+                        value={editEmail}
+                        onChange={(e) => setEditEmail(e.target.value)}
+                        placeholder="admin@bank.com"
+                        required
+                    />
+
+                    <Input
+                        label="Username"
+                        type="text"
+                        name="edit-username"
+                        value={editUsername}
+                        onChange={(e) => setEditUsername(e.target.value)}
+                        placeholder="Username"
+                        required
+                    />
+
+                    <Select
+                        label="Status"
+                        name="edit-status"
+                        value={editStatus}
+                        onChange={(e) => setEditStatus(e.target.value)}
+                        options={statusOptions}
+                        required
+                    />
+
+                    <Input
+                        label="New password (optional)"
+                        type="password"
+                        name="edit-password"
+                        value={editPassword}
+                        onChange={(e) => setEditPassword(e.target.value)}
+                        placeholder="Leave blank to keep current password"
+                        autoComplete="new-password"
+                    />
+
+                    <div className="invite-actions">
+                        <Button type="button" variant="ghost" onClick={closeEditModal}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" loading={editLoading}>
+                            Save changes
                         </Button>
                     </div>
                 </form>

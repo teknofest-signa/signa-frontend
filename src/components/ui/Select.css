@@ -1,0 +1,26 @@
+.select-wrapper {
+    position: relative;
+}
+
+.field-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 100%;
+    cursor: pointer;
+    padding-right: 36px;
+}
+
+.field-select option {
+    background: var(--surface-raised);
+    color: var(--text-primary);
+}
+
+.select-chevron {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}

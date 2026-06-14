@@ -100,6 +100,11 @@
     font-size: 13px;
 }
 
+.row-actions {
+    display: flex;
+    gap: 6px;
+}
+
 .row-action {
     background: transparent;
     border: 1px solid transparent;
@@ -112,6 +117,12 @@
 }
 
 .row-action:hover {
+    color: var(--accent);
+    border-color: var(--accent-dim);
+    background: var(--accent-glow);
+}
+
+.row-action-danger:hover {
     color: var(--danger);
     border-color: var(--danger-dim);
     background: rgba(248, 113, 113, 0.06);
