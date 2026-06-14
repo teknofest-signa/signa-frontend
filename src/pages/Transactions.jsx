@@ -23,6 +23,13 @@ const typeOptions = [{ value: '', label: 'All types' }];
 const statusOptions = [{ value: '', label: 'All statuses' }];
 const currencyOptions = [{ value: '', label: 'All currencies' }];
 
+const pageSizeOptions = [
+    { value: '10', label: '10 / page' },
+    { value: '20', label: '20 / page' },
+    { value: '50', label: '50 / page' },
+    { value: '100', label: '100 / page' },
+];
+
 const formatAmount = (amount, currency) => {
     if (amount === null || amount === undefined) return '—';
     const num = Number(amount);
@@ -46,10 +53,33 @@ const fraudVariant = (score) => {
     return 'success';
 };
 
+const buildPageRange = (current, total) => {
+    if (total <= 7) return [...Array(total).keys()];
+
+    const pages = new Set([0, total - 1, current]);
+    pages.add(Math.max(0, current - 1));
+    pages.add(Math.min(total - 1, current + 1));
+
+    const sorted = [...pages].sort((a, b) => a - b);
+    const result = [];
+    for (let i = 0; i < sorted.length; i++) {
+        if (i > 0 && sorted[i] - sorted[i - 1] > 1) {
+            result.push('…');
+        }
+        result.push(sorted[i]);
+    }
+    return result;
+};
+
 const Transactions = () => {
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState('');
+
+    const [page, setPage] = useState(0);
+    const [pageSize, setPageSize] = useState(10);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
 
     const [search, setSearch] = useState('');
     const [typeFilter, setTypeFilter] = useState('');
@@ -58,23 +88,38 @@ const Transactions = () => {
 
     const [detailTarget, setDetailTarget] = useState(null);
 
-    const fetchTransactions = async () => {
+    const fetchTransactions = async (targetPage, targetSize) => {
         setLoading(true);
         setLoadError('');
         try {
-            const { data } = await getAllTransactions();
-            setTransactions(Array.isArray(data) ? data : data?.content || []);
+            const { data } = await getAllTransactions(targetPage, targetSize);
+            const content = Array.isArray(data) ? data : data?.content || [];
+            setTransactions(content);
+            setTotalPages(data?.totalPages ?? (content.length < targetSize && targetPage === 0 ? 1 : targetPage + 1));
+            setTotalElements(data?.totalElements ?? content.length);
         } catch (err) {
             setLoadError('Could not load transactions. Please try again.');
             setTransactions([]);
+            setTotalPages(0);
+            setTotalElements(0);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchTransactions();
-    }, []);
+        fetchTransactions(page, pageSize);
+    }, [page, pageSize]);
+
+    const handlePageSizeChange = (e) => {
+        setPageSize(Number(e.target.value));
+        setPage(0);
+    };
+
+    const goToPage = (target) => {
+        if (target < 0 || target > totalPages - 1 || target === page) return;
+        setPage(target);
+    };
 
     const typeChoices = useMemo(() => {
         const values = new Set(transactions.map((t) => t.transactionType).filter(Boolean));
@@ -99,7 +144,7 @@ const Transactions = () => {
             if (currencyFilter && tx.currency !== currencyFilter) return false;
 
             if (!query) return true;
-            const haystack = [tx.id, tx.senderId, tx.receiverId, tx.referenceId, tx.description]
+            const haystack = [tx.id, tx.fromAccountId, tx.toAccountId, tx.referenceId, tx.description]
                 .filter(Boolean)
                 .map((v) => String(v).toLowerCase());
             return haystack.some((v) => v.includes(query));
@@ -114,6 +159,10 @@ const Transactions = () => {
         setStatusFilter('');
         setCurrencyFilter('');
     };
+
+    const rangeStart = totalElements === 0 ? 0 : page * pageSize + 1;
+    const rangeEnd = Math.min(totalElements, page * pageSize + transactions.length);
+    const pageRange = buildPageRange(page, totalPages);
 
     return (
         <div className="transactions-page">
@@ -132,34 +181,39 @@ const Transactions = () => {
                     </svg>
                     <input
                         type="text"
-                        placeholder="Search by transaction ID, sender, receiver, reference, or description"
+                        placeholder="Search this page by transaction ID, sender, receiver, reference, or description"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
+                    {search && (
+                        <button className="search-clear" onClick={() => setSearch('')} aria-label="Clear search">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                            </svg>
+                        </button>
+                    )}
                 </div>
 
                 <div className="transactions-filters">
-                    <Select
-                        name="type-filter"
-                        value={typeFilter}
-                        onChange={(e) => setTypeFilter(e.target.value)}
-                        options={typeChoices}
-                    />
-                    <Select
-                        name="status-filter"
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        options={statusChoices}
-                    />
-                    <Select
-                        name="currency-filter"
-                        value={currencyFilter}
-                        onChange={(e) => setCurrencyFilter(e.target.value)}
-                        options={currencyChoices}
-                    />
+                    <div className="filter-group">
+                        <span className="filter-label">Type</span>
+                        <Select name="type-filter" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} options={typeChoices} />
+                    </div>
+                    <div className="filter-group">
+                        <span className="filter-label">Status</span>
+                        <Select name="status-filter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} options={statusChoices} />
+                    </div>
+                    <div className="filter-group">
+                        <span className="filter-label">Currency</span>
+                        <Select name="currency-filter" value={currencyFilter} onChange={(e) => setCurrencyFilter(e.target.value)} options={currencyChoices} />
+                    </div>
+
                     {hasActiveFilters && (
                         <button className="filters-clear" onClick={clearFilters}>
-                            Clear
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                            </svg>
+                            Clear filters
                         </button>
                     )}
                 </div>
@@ -184,7 +238,7 @@ const Transactions = () => {
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
                             <path d="M3 12h4l2-7 4 14 2-7h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                        <p>{transactions.length === 0 ? 'No transactions yet.' : 'No transactions match your search and filters.'}</p>
+                        <p>{transactions.length === 0 ? 'No transactions yet.' : 'No transactions on this page match your search and filters.'}</p>
                     </div>
                 ) : (
                     <table className="transactions-table">
@@ -247,6 +301,61 @@ const Transactions = () => {
                         ))}
                         </tbody>
                     </table>
+                )}
+
+                {!loading && !loadError && transactions.length > 0 && (
+                    <div className="transactions-pagination">
+                        <div className="pagination-info">
+                            Showing <strong>{rangeStart}</strong>–<strong>{rangeEnd}</strong> of <strong>{totalElements}</strong>
+                            {hasActiveFilters && filteredTransactions.length !== transactions.length && (
+                                <span className="pagination-filtered"> · {filteredTransactions.length} match filters on this page</span>
+                            )}
+                        </div>
+
+                        <div className="pagination-controls">
+                            <button className="pager-btn" onClick={() => goToPage(0)} disabled={page === 0} aria-label="First page">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </button>
+                            <button className="pager-btn" onClick={() => goToPage(page - 1)} disabled={page === 0} aria-label="Previous page">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path d="M14 17l-5-5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </button>
+
+                            <div className="pager-pages">
+                                {pageRange.map((p, idx) =>
+                                    p === '…' ? (
+                                        <span className="pager-ellipsis" key={`ellipsis-${idx}`}>…</span>
+                                    ) : (
+                                        <button
+                                            key={p}
+                                            className={`pager-page ${p === page ? 'pager-page-active' : ''}`}
+                                            onClick={() => goToPage(p)}
+                                        >
+                                            {p + 1}
+                                        </button>
+                                    )
+                                )}
+                            </div>
+
+                            <button className="pager-btn" onClick={() => goToPage(page + 1)} disabled={page >= totalPages - 1} aria-label="Next page">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path d="M10 17l5-5-5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </button>
+                            <button className="pager-btn" onClick={() => goToPage(totalPages - 1)} disabled={page >= totalPages - 1} aria-label="Last page">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path d="M6 17l5-5-5-5M13 17l5-5-5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="pagination-size">
+                            <Select name="page-size" value={String(pageSize)} onChange={handlePageSizeChange} options={pageSizeOptions} />
+                        </div>
+                    </div>
                 )}
             </Card>
 
