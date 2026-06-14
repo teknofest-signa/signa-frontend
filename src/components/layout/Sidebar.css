@@ -15,8 +15,10 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 24px 22px;
+    height: 81px;
+    padding: 0 22px;
     border-bottom: 1px solid var(--border-soft);
+    box-sizing: border-box;
 }
 
 .brand-mark {
