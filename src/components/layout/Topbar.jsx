@@ -1,9 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
+import Avatar from '../ui/Avatar';
+import { uploadProfilePhoto } from '../../api/auth';
+import { useAuth } from '../../context/AuthContext';
 import './Topbar.css';
 
 const Topbar = ({ user, title, onLogout }) => {
     const [open, setOpen] = useState(false);
+    const [photoLoading, setPhotoLoading] = useState(false);
+    const [photoError, setPhotoError] = useState('');
     const ref = useRef(null);
+    const fileInputRef = useRef(null);
+    const { loadUser } = useAuth();
 
     useEffect(() => {
         const handler = (e) => {
@@ -13,7 +20,35 @@ const Topbar = ({ user, title, onLogout }) => {
         return () => document.removeEventListener('click', handler);
     }, []);
 
-    const initial = user?.username?.[0]?.toUpperCase() || '?';
+    const handleFileChange = async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+
+        setPhotoError('');
+        setPhotoLoading(true);
+        try {
+            await uploadProfilePhoto(file);
+            await loadUser();
+        } catch (err) {
+            setPhotoError('Could not upload photo. Please try again.');
+        } finally {
+            setPhotoLoading(false);
+        }
+    };
+
+    const handleRemovePhoto = async () => {
+        setPhotoError('');
+        setPhotoLoading(true);
+        try {
+            await uploadProfilePhoto(null);
+            await loadUser();
+        } catch (err) {
+            setPhotoError('Could not remove photo. Please try again.');
+        } finally {
+            setPhotoLoading(false);
+        }
+    };
 
     return (
         <header className="topbar">
@@ -23,7 +58,7 @@ const Topbar = ({ user, title, onLogout }) => {
 
             <div className="topbar-actions" ref={ref}>
                 <button className="user-chip" onClick={() => setOpen((v) => !v)}>
-                    <span className="user-avatar">{initial}</span>
+                    <Avatar photo={user?.profilePhoto} name={user?.username} size="sm" />
                     <span className="user-meta">
             <span className="user-name">{user?.username || '—'}</span>
             <span className="user-role">{user?.role?.replace('_', ' ')}</span>
@@ -35,10 +70,38 @@ const Topbar = ({ user, title, onLogout }) => {
 
                 {open && (
                     <div className="user-dropdown">
-                        <div className="user-dropdown-info">
-                            <span className="user-dropdown-email">{user?.email}</span>
-                            <span className="user-dropdown-id mono">{user?.id}</span>
+                        <div className="user-dropdown-profile">
+                            <Avatar photo={user?.profilePhoto} name={user?.username} size="lg" />
+                            <div className="user-dropdown-info">
+                                <span className="user-dropdown-email">{user?.email}</span>
+                                <span className="user-dropdown-id mono">{user?.id}</span>
+                            </div>
                         </div>
+
+                        {photoError && <div className="user-dropdown-error">{photoError}</div>}
+
+                        <div className="user-dropdown-photo-actions">
+                            <button
+                                className="user-dropdown-secondary"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={photoLoading}
+                            >
+                                {photoLoading ? 'Working…' : 'Change photo'}
+                            </button>
+                            {user?.profilePhoto && (
+                                <button className="user-dropdown-secondary" onClick={handleRemovePhoto} disabled={photoLoading}>
+                                    Remove
+                                </button>
+                            )}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={handleFileChange}
+                            />
+                        </div>
+
                         <button className="user-dropdown-item" onClick={onLogout}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                                 <path d="M16 17l5-5-5-5M21 12H9M13 21H5a2 2 0 01-2-2V5a2 2 0 012-2h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
