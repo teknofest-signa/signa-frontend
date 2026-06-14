@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -10,7 +11,7 @@ const statusVariant = {
 };
 
 const comingSoonModules = [
-    { name: 'Banks', desc: 'Connected institutions and their network status.', icon: 'bank' },
+    { name: 'Banks', desc: 'Connected institutions and their network status.', icon: 'bank', to: '/banks' },
     { name: 'Transactions', desc: 'Live stream of transactions analyzed by the engine.', icon: 'pulse' },
     { name: 'AI risk engine', desc: 'Fraud scoring, model performance, and alerts.', icon: 'shield' },
     { name: 'Blocked users', desc: 'Cross-bank hashed user blocklist and history.', icon: 'lock' },
@@ -43,6 +44,7 @@ const moduleIcons = {
 
 const Overview = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
 
     return (
         <div className="overview">
@@ -50,10 +52,6 @@ const Overview = () => {
                 <div className="welcome-content">
                     <span className="welcome-eyebrow mono">SESSION ESTABLISHED</span>
                     <h2>Welcome back, {user?.username || 'admin'}.</h2>
-                    <p>
-                        You're signed in as <strong>{user?.role?.replace('_', ' ')}</strong>. The core fraud-network
-                        modules — banks, transactions, AI scoring, and blocklists — are still in development.
-                    </p>
                     <div className="welcome-meta">
                         <div className="welcome-meta-item">
                             <span className="meta-label">Account status</span>
@@ -92,13 +90,29 @@ const Overview = () => {
 
             <div className="modules-grid">
                 {comingSoonModules.map((mod) => (
-                    <Card className="module-card" key={mod.name}>
+                    <Card
+                        className={`module-card${mod.to ? ' module-card-link' : ''}`}
+                        key={mod.name}
+                        onClick={mod.to ? () => navigate(mod.to) : undefined}
+                        role={mod.to ? 'button' : undefined}
+                        tabIndex={mod.to ? 0 : undefined}
+                        onKeyDown={mod.to ? (e) => e.key === 'Enter' && navigate(mod.to) : undefined}
+                    >
                         <div className="module-icon">{moduleIcons[mod.icon]}</div>
                         <div className="module-text">
                             <h4>{mod.name}</h4>
                             <p>{mod.desc}</p>
                         </div>
-                        <span className="module-badge mono">coming soon</span>
+                        {mod.to ? (
+                            <span className="module-badge module-badge-active mono">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                                    <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                                open
+                            </span>
+                        ) : (
+                            <span className="module-badge mono">coming soon</span>
+                        )}
                     </Card>
                 ))}
             </div>

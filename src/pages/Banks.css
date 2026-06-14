@@ -71,3 +71,48 @@
     font-size: 12px;
     color: var(--text-secondary);
 }
+
+/* Skeleton loading */
+.bank-card-skeleton {
+    pointer-events: none;
+}
+
+@keyframes shimmer {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+}
+
+.skeleton {
+    border-radius: var(--radius-sm);
+    background: linear-gradient(
+            90deg,
+            var(--surface-raised) 25%,
+            var(--border-soft) 50%,
+            var(--surface-raised) 75%
+    );
+    background-size: 400px 100%;
+    animation: shimmer 1.4s ease infinite;
+}
+
+.skeleton-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+}
+
+.skeleton-title {
+    height: 16px;
+    width: 60%;
+}
+
+.skeleton-id {
+    height: 11px;
+    width: 85%;
+    margin-top: 4px;
+}
+
+.skeleton-date {
+    height: 12px;
+    width: 70px;
+}
