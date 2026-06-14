@@ -8,7 +8,10 @@ const navItems = [
     },
     {
         section: 'Network',
-        items: [{ to: '/banks', label: 'Banks', icon: 'bank' }],
+        items: [
+            { to: '/banks', label: 'Banks', icon: 'bank' },
+            { to: '/transactions', label: 'Transactions', icon: 'pulse' },
+        ],
     },
     {
         section: 'Access control',
@@ -17,7 +20,6 @@ const navItems = [
     {
         section: 'Coming soon',
         items: [
-            { to: '#', label: 'Transactions', icon: 'pulse', disabled: true },
             { to: '#', label: 'AI risk engine', icon: 'shield', disabled: true },
             { to: '#', label: 'Blocked users', icon: 'lock', disabled: true },
         ],
