@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
-import { getBanks, createBank, deleteBank } from '../api/banks';
+import { getBanks, createBank, deleteBank, uploadBankLogo } from '../api/banks';
 import './Banks.css';
 
 const Banks = () => {
@@ -18,6 +18,51 @@ const Banks = () => {
 
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
+
+    const fileInputRefs = useRef({});
+    const [logoLoading, setLogoLoading] = useState({});
+    const [logoMenuOpen, setLogoMenuOpen] = useState(null);
+    const logoMenuRef = useRef(null);
+
+    useEffect(() => {
+        const handler = (e) => {
+            if (logoMenuRef.current && !logoMenuRef.current.contains(e.target)) {
+                setLogoMenuOpen(null);
+            }
+        };
+        document.addEventListener('click', handler);
+        return () => document.removeEventListener('click', handler);
+    }, []);
+
+    const handleLogoChange = async (bankId, e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+
+        setLogoMenuOpen(null);
+        setLogoLoading((prev) => ({ ...prev, [bankId]: true }));
+        try {
+            await uploadBankLogo(bankId, file);
+            fetchBanks();
+        } catch (err) {
+            setLoadError('Could not upload logo. Please try again.');
+        } finally {
+            setLogoLoading((prev) => ({ ...prev, [bankId]: false }));
+        }
+    };
+
+    const handleLogoRemove = async (bankId) => {
+        setLogoMenuOpen(null);
+        setLogoLoading((prev) => ({ ...prev, [bankId]: true }));
+        try {
+            await uploadBankLogo(bankId, null);
+            fetchBanks();
+        } catch (err) {
+            setLoadError('Could not remove logo. Please try again.');
+        } finally {
+            setLogoLoading((prev) => ({ ...prev, [bankId]: false }));
+        }
+    };
 
     const fetchBanks = async () => {
         setLoading(true);
@@ -126,19 +171,62 @@ const Banks = () => {
                 <div className="banks-grid">
                     {banks.map((bank) => (
                         <Card className="bank-card" key={bank.id}>
-                            <div className="bank-card-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                    <path d="M3 10l9-6 9 6M5 10v9M9 10v9M15 10v9M19 10v9M3 19h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
+                            <div className="bank-card-header">
+                                <div className="bank-card-icon">
+                                    {bank.logo ? (
+                                        <img src={`data:image/png;base64,${bank.logo}`} alt={`${bank.name} logo`} className="bank-logo-img" />
+                                    ) : (
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                            <path d="M3 10l9-6 9 6M5 10v9M9 10v9M15 10v9M19 10v9M3 19h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                    )}
+                                </div>
+                                <div className="bank-card-body">
+                                    <h4>{bank.name}</h4>
+                                    <span className="bank-id mono">{bank.id}</span>
+                                </div>
+
+                                <div className="bank-logo-menu" ref={bank.id === logoMenuOpen ? logoMenuRef : null}>
+                                    <button
+                                        className="row-action"
+                                        onClick={() => setLogoMenuOpen((prev) => (prev === bank.id ? null : bank.id))}
+                                        aria-label="Logo options"
+                                        disabled={logoLoading[bank.id]}
+                                    >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                            <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.6" />
+                                            <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+                                            <path d="M21 15l-5-5L5 21" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                    </button>
+
+                                    {logoMenuOpen === bank.id && (
+                                        <div className="bank-logo-dropdown">
+                                            <button onClick={() => fileInputRefs.current[bank.id]?.click()} disabled={logoLoading[bank.id]}>
+                                                {logoLoading[bank.id] ? 'Working…' : bank.logo ? 'Change logo' : 'Add logo'}
+                                            </button>
+                                            {bank.logo && (
+                                                <button onClick={() => handleLogoRemove(bank.id)} disabled={logoLoading[bank.id]}>
+                                                    Remove logo
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <input
+                                        ref={(el) => (fileInputRefs.current[bank.id] = el)}
+                                        type="file"
+                                        accept="image/*"
+                                        style={{ display: 'none' }}
+                                        onChange={(e) => handleLogoChange(bank.id, e)}
+                                    />
+                                </div>
                             </div>
-                            <div className="bank-card-body">
-                                <h4>{bank.name}</h4>
-                                <span className="bank-id mono">{bank.id}</span>
-                            </div>
+
                             <div className="bank-card-footer">
-                <span className="bank-date mono">
-                  {bank.createdAt ? new Date(bank.createdAt).toLocaleDateString() : '—'}
-                </span>
+                                <span className="bank-date mono">
+                                    {bank.createdAt ? new Date(bank.createdAt).toLocaleDateString() : '—'}
+                                </span>
                                 <button className="row-action row-action-danger" onClick={() => setDeleteTarget(bank)} aria-label="Remove bank">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                                         <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
