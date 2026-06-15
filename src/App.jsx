@@ -8,6 +8,7 @@ import Overview from './pages/Overview';
 import ManageAdmins from './pages/ManageAdmins';
 import Banks from './pages/Banks';
 import Transactions from './pages/Transactions';
+import AIRiskEngine from './pages/AIRiskEngine';
 
 const LoginRoute = () => {
     const { isAuthenticated, loading } = useAuth();
@@ -46,6 +47,7 @@ const App = () => {
                     <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
                         <Route path="banks" element={<Banks />}/>
                         <Route path="transactions" element={<Transactions />} />
+                        <Route path="ai-risk-engine" element={<AIRiskEngine />} />
                     </Route>
 
                     <Route path="*" element={<Navigate to="/" replace />} />

@@ -11,6 +11,7 @@ const navItems = [
         items: [
             { to: '/banks', label: 'Banks', icon: 'bank' },
             { to: '/transactions', label: 'Transactions', icon: 'pulse' },
+            { to: '/ai-risk-engine', label: 'AI risk engine', icon: 'shield' },
         ],
     },
     {
@@ -20,7 +21,6 @@ const navItems = [
     {
         section: 'Coming soon',
         items: [
-            { to: '#', label: 'AI risk engine', icon: 'shield', disabled: true },
             { to: '#', label: 'Blocked users', icon: 'lock', disabled: true },
         ],
     },
