@@ -4,6 +4,7 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
+import { simulateTransaction } from '../api/simulation';
 import './AIRiskEngine.css';
 
 /* ------------------------------------------------------------------ */
@@ -88,49 +89,6 @@ const reasonCodeBank = {
     ],
 };
 
-const futureApis = [
-    {
-        name: 'POST /ai/score',
-        desc: 'Synchronous scoring endpoint — submit a transaction payload and receive a fraud score, decision, and reason codes within ~150ms.',
-        status: 'planned',
-    },
-    {
-        name: 'GET /ai/models',
-        desc: 'List active model versions, training date, and current performance metrics per model.',
-        status: 'planned',
-    },
-    {
-        name: 'GET /ai/models/{id}/metrics',
-        desc: 'Detailed precision, recall, ROC-AUC, and drift metrics for a specific model version.',
-        status: 'planned',
-    },
-    {
-        name: 'POST /ai/feedback',
-        desc: 'Send confirmed fraud/legit labels back to the engine for continuous learning and model retraining.',
-        status: 'planned',
-    },
-    {
-        name: 'GET /ai/explain/{transactionId}',
-        desc: 'Returns SHAP-style feature contribution breakdown for a scored transaction (explainability).',
-        status: 'planned',
-    },
-    {
-        name: 'GET /ai/network-graph',
-        desc: 'Query the cross-bank hashed identity graph for shared devices, accounts, or beneficiaries.',
-        status: 'planned',
-    },
-    {
-        name: 'GET /ai/alerts/stream',
-        desc: 'WebSocket / SSE stream of high-risk transactions as they are scored across the network.',
-        status: 'planned',
-    },
-    {
-        name: 'POST /ai/rules',
-        desc: 'Manage rule-based overrides that sit alongside the ML model (allow-lists, hard blocks, thresholds).',
-        status: 'planned',
-    },
-];
-
 /* ------------------------------------------------------------------ */
 /* Helpers                                                              */
 /* ------------------------------------------------------------------ */
@@ -146,12 +104,24 @@ const seededRandom = (seed) => {
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
-const formatScore = (score) => score.toFixed(2);
+const formatScore = (score) => Number(score).toFixed(2);
 
 const decisionForScore = (score) => {
     if (score >= 0.75) return { label: 'BLOCK', variant: 'danger' };
     if (score >= 0.4) return { label: 'REVIEW', variant: 'warning' };
     return { label: 'APPROVE', variant: 'success' };
+};
+
+// Maps TransactionFraudStatus enum from backend to badge variant
+const statusVariantMap = {
+    APPROVED: 'success',
+    FLAGGED: 'warning',
+    BLOCKED: 'danger',
+};
+
+const decisionFromStatus = (transactionFraudStatus, score) => {
+    const variant = statusVariantMap[transactionFraudStatus] ?? decisionForScore(score).variant;
+    return { label: transactionFraudStatus, variant };
 };
 
 const riskBand = (score) => {
@@ -167,34 +137,6 @@ const pickReasonCodes = (band, rng) => {
     return shuffled.slice(0, count);
 };
 
-/* Deterministic-ish "model" — combines simple heuristics on the inputs
-   with randomness so repeated runs vary slightly, like a real model. */
-const computeFraudScore = (form, rng) => {
-    let score = 0.05;
-
-    const amount = Number(form.amount) || 0;
-    if (amount > 10000) score += 0.35;
-    else if (amount > 3000) score += 0.18;
-    else if (amount > 800) score += 0.06;
-
-    if (form.newBeneficiary) score += 0.18;
-    if (form.channel === 'API') score += 0.05;
-    if (form.channel === 'ATM' && amount > 2000) score += 0.1;
-
-    const hour = Number(form.hour);
-    if (hour >= 0 && hour <= 5) score += 0.12;
-
-    if (form.crossBorder) score += 0.15;
-
-    if (form.transactionType === 'WITHDRAWAL' && amount > 5000) score += 0.1;
-    if (form.transactionType === 'CARD_PURCHASE' && form.crossBorder) score += 0.08;
-
-    // model "noise"
-    score += (rng() - 0.5) * 0.12;
-
-    return clamp(score, 0.01, 0.99);
-};
-
 const buildScoreHistory = (rng, n = 24) => {
     const points = [];
     for (let i = 0; i < n; i++) {
@@ -206,14 +148,13 @@ const buildScoreHistory = (rng, n = 24) => {
 };
 
 const buildDistribution = (rng) => {
-    // 10 buckets from 0 to 1
     const buckets = new Array(10).fill(0);
     for (let i = 0; i < 400; i++) {
         let v;
         const r = rng();
-        if (r < 0.78) v = rng() * 0.4; // mostly low risk
-        else if (r < 0.95) v = 0.4 + rng() * 0.35; // medium
-        else v = 0.75 + rng() * 0.25; // high
+        if (r < 0.78) v = rng() * 0.4;
+        else if (r < 0.95) v = 0.4 + rng() * 0.35;
+        else v = 0.75 + rng() * 0.25;
         const idx = clamp(Math.floor(v * 10), 0, 9);
         buckets[idx]++;
     }
@@ -224,47 +165,46 @@ const initialFormState = {
     transactionType: 'TRANSFER',
     amount: '2500',
     currency: 'USD',
-    channel: 'MOBILE',
-    hour: '14',
-    fromAccountId: 'acc_4f21a8',
-    toAccountId: 'acc_9d03e1',
-    newBeneficiary: false,
-    crossBorder: false,
+    transactionChannel: 'MOBILE',
+    fromAccountId: crypto.randomUUID(),
+    toAccountId: crypto.randomUUID(),
+    isNewBeneficiary: false,
+    isCrossBorderTransaction: false,
 };
 
 /* ------------------------------------------------------------------ */
 /* Sub components                                                       */
 /* ------------------------------------------------------------------ */
 
-const ScoreGauge = ({ score }) => {
-    const angle = -90 + clamp(score, 0, 1) * 180;
+// Needle animates from 0 → score via animatedScore prop
+const ScoreGauge = ({ score, animatedScore }) => {
+    const displayScore = animatedScore ?? score;
+    const angle = -90 + clamp(displayScore, 0, 1) * 180;
     const decision = decisionForScore(score);
     const color =
-        decision.variant === 'danger' ? 'var(--danger)' : decision.variant === 'warning' ? 'var(--warning)' : 'var(--success)';
+        decision.variant === 'danger'
+            ? 'var(--danger)'
+            : decision.variant === 'warning'
+                ? 'var(--warning)'
+                : 'var(--success)';
 
     return (
         <svg viewBox="0 0 220 130" width="220" height="130" className="score-gauge">
+            {/* track */}
             <path d="M20 110 A 90 90 0 0 1 200 110" fill="none" stroke="var(--border)" strokeWidth="14" strokeLinecap="round" />
-            <path
-                d="M20 110 A 90 90 0 0 1 200 110"
-                fill="none"
-                stroke="var(--accent-dim)"
-                strokeWidth="14"
-                strokeLinecap="round"
-                strokeDasharray="282.7"
-                strokeDashoffset={282.7 * (1 - clamp(score, 0, 1))}
-                opacity="0.0"
-            />
             {/* colored arc segments */}
-            <path d="M20 110 A 90 90 0 0 1 75 31.5" fill="none" stroke="var(--success)" strokeWidth="14" strokeLinecap="round" opacity="0.55" />
+            <path d="M20 110 A 90 90 0 0 1 75 31.5"  fill="none" stroke="var(--success)" strokeWidth="14" strokeLinecap="round" opacity="0.55" />
             <path d="M75 31.5 A 90 90 0 0 1 145 31.5" fill="none" stroke="var(--warning)" strokeWidth="14" opacity="0.5" />
-            <path d="M145 31.5 A 90 90 0 0 1 200 110" fill="none" stroke="var(--danger)" strokeWidth="14" strokeLinecap="round" opacity="0.55" />
-
-            <g transform={`rotate(${angle} 110 110)`} style={{ transition: 'transform 0.6s cubic-bezier(.4,1.4,.4,1)' }}>
+            <path d="M145 31.5 A 90 90 0 0 1 200 110" fill="none" stroke="var(--danger)"  strokeWidth="14" strokeLinecap="round" opacity="0.55" />
+            {/* needle — transition driven by animatedScore via rAF */}
+            <g
+                transform={`rotate(${angle} 110 110)`}
+                style={{ transition: 'transform 0.05s linear' }}
+            >
                 <line x1="110" y1="110" x2="110" y2="34" stroke={color} strokeWidth="3" strokeLinecap="round" />
                 <circle cx="110" cy="110" r="6" fill={color} />
             </g>
-
+            {/* score text always shows the final value */}
             <text x="110" y="100" textAnchor="middle" className="gauge-score mono" fill="var(--text-primary)">
                 {formatScore(score)}
             </text>
@@ -286,7 +226,14 @@ const Sparkline = ({ data, danger }) => {
 
     return (
         <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} preserveAspectRatio="none" className="sparkline">
-            <polyline points={points} fill="none" stroke={danger ? 'var(--danger)' : 'var(--accent)'} strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+            <polyline
+                points={points}
+                fill="none"
+                stroke={danger ? 'var(--danger)' : 'var(--accent)'}
+                strokeWidth="1.6"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+            />
         </svg>
     );
 };
@@ -306,15 +253,13 @@ const ScoreHistoryChart = ({ data }) => {
 
     const linePoints = points.map(([x, y]) => `${x},${y}`).join(' ');
     const areaPoints = `${padding.left},${padding.top + innerH} ${linePoints} ${padding.left + innerW},${padding.top + innerH}`;
-
     const gridLines = [0, 0.25, 0.5, 0.75, 1];
 
     return (
         <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} className="history-chart" preserveAspectRatio="xMidYMid meet">
-            {/* threshold bands */}
-            <rect x={padding.left} y={padding.top} width={innerW} height={innerH * 0.25} fill="var(--danger)" opacity="0.06" />
-            <rect x={padding.left} y={padding.top + innerH * 0.25} width={innerW} height={innerH * 0.35} fill="var(--warning)" opacity="0.05" />
-            <rect x={padding.left} y={padding.top + innerH * 0.6} width={innerW} height={innerH * 0.4} fill="var(--success)" opacity="0.05" />
+            <rect x={padding.left} y={padding.top}                    width={innerW} height={innerH * 0.25} fill="var(--danger)"  opacity="0.06" />
+            <rect x={padding.left} y={padding.top + innerH * 0.25}   width={innerW} height={innerH * 0.35} fill="var(--warning)" opacity="0.05" />
+            <rect x={padding.left} y={padding.top + innerH * 0.6}    width={innerW} height={innerH * 0.4}  fill="var(--success)" opacity="0.05" />
 
             {gridLines.map((g) => {
                 const y = padding.top + (1 - g) * innerH;
@@ -335,7 +280,6 @@ const ScoreHistoryChart = ({ data }) => {
                 <circle key={i} cx={x} cy={y} r={v >= 0.75 ? 3.5 : 2.5} fill={v >= 0.75 ? 'var(--danger)' : 'var(--accent)'} stroke="var(--surface)" strokeWidth="1.5" />
             ))}
 
-            <line x1="0.75" y1={padding.top + innerH * 0.25} x2={w} y2={padding.top + innerH * 0.25} stroke="transparent" />
             <text x={padding.left + innerW} y={padding.top + innerH * 0.25 - 4} textAnchor="end" fontSize="9" fill="var(--danger)" fontFamily="var(--font-mono)" opacity="0.8">
                 block threshold
             </text>
@@ -351,7 +295,6 @@ const DistributionChart = ({ buckets }) => {
     const innerH = h - padding.top - padding.bottom;
     const max = Math.max(...buckets, 1);
     const barW = innerW / buckets.length;
-
     const colorFor = (i) => (i >= 8 ? 'var(--danger)' : i >= 4 ? 'var(--warning)' : 'var(--accent)');
 
     return (
@@ -399,61 +342,51 @@ const ArchitectureDiagram = () => (
             </marker>
         </defs>
 
-        {/* lanes background labels */}
-        <text x="20" y="28" fontSize="11" fill="var(--text-muted)" fontFamily="var(--font-mono)" letterSpacing="0.1em">DATA SOURCES</text>
+        <text x="20"  y="28" fontSize="11" fill="var(--text-muted)" fontFamily="var(--font-mono)" letterSpacing="0.1em">DATA SOURCES</text>
         <text x="320" y="28" fontSize="11" fill="var(--text-muted)" fontFamily="var(--font-mono)" letterSpacing="0.1em">REAL-TIME PIPELINE</text>
         <text x="700" y="28" fontSize="11" fill="var(--text-muted)" fontFamily="var(--font-mono)" letterSpacing="0.1em">OUTPUTS</text>
 
-        {/* Data source nodes */}
         {[
-            { y: 60, label: 'Member bank A', sub: 'transactions' },
-            { y: 140, label: 'Member bank B', sub: 'transactions' },
-            { y: 220, label: 'Member bank C', sub: 'transactions' },
+            { y: 60,  label: 'Member bank A',       sub: 'transactions' },
+            { y: 140, label: 'Member bank B',       sub: 'transactions' },
+            { y: 220, label: 'Member bank C',       sub: 'transactions' },
             { y: 300, label: 'Hashed identity graph', sub: 'shared signals' },
         ].map((n) => (
             <g key={n.label}>
                 <rect x="20" y={n.y} width="190" height="56" rx="10" fill="var(--surface-raised)" stroke="var(--border)" />
-                <text x="40" y={n.y + 24} fontSize="13" fill="var(--text-primary)" fontFamily="var(--font-display)">{n.label}</text>
-                <text x="40" y={n.y + 42} fontSize="11" fill="var(--text-muted)" fontFamily="var(--font-mono)">{n.sub}</text>
+                <text x="40" y={n.y + 24} fontSize="13" fill="var(--text-primary)"  fontFamily="var(--font-display)">{n.label}</text>
+                <text x="40" y={n.y + 42} fontSize="11" fill="var(--text-muted)"    fontFamily="var(--font-mono)">{n.sub}</text>
                 <line x1="210" y1={n.y + 28} x2="320" y2="180" stroke="var(--accent-dim)" strokeWidth="1.4" markerEnd="url(#arrow)" opacity="0.6" />
             </g>
         ))}
 
-        {/* Pipeline nodes */}
         <rect x="320" y="40" width="220" height="280" rx="14" fill="var(--accent-glow)" stroke="var(--accent-dim)" strokeDasharray="4 4" />
         <text x="340" y="64" fontSize="12" fill="var(--accent)" fontFamily="var(--font-mono)" letterSpacing="0.08em">AI RISK ENGINE</text>
 
         {[
-            { y: 80, label: 'Feature store', sub: 'velocity · geo · device' },
-            { y: 150, label: 'Ensemble model', sub: 'GBM + sequence net' },
-            { y: 220, label: 'Graph scoring', sub: 'ring & mule detection' },
-            { y: 280, label: 'Decision layer', sub: 'thresholds + rules' },
+            { y: 80,  label: 'Feature store',   sub: 'velocity · geo · device' },
+            { y: 150, label: 'Ensemble model',  sub: 'GBM + sequence net' },
+            { y: 220, label: 'Graph scoring',   sub: 'ring & mule detection' },
+            { y: 280, label: 'Decision layer',  sub: 'thresholds + rules' },
         ].map((n, i) => (
             <g key={n.label}>
                 <rect x="345" y={n.y} width="170" height="48" rx="10" fill="var(--surface)" stroke="var(--accent-dim)" />
                 <text x="360" y={n.y + 20} fontSize="12.5" fill="var(--text-primary)" fontFamily="var(--font-display)">{n.label}</text>
-                <text x="360" y={n.y + 37} fontSize="10.5" fill="var(--text-muted)" fontFamily="var(--font-mono)">{n.sub}</text>
-                {i < 3 && (
-                    <line x1="430" y1={n.y + 48} x2="430" y2={n.y + 70} stroke="var(--accent-dim)" strokeWidth="1.4" markerEnd="url(#arrow)" />
-                )}
+                <text x="360" y={n.y + 37} fontSize="10.5" fill="var(--text-muted)"   fontFamily="var(--font-mono)">{n.sub}</text>
+                {i < 3 && <line x1="430" y1={n.y + 48} x2="430" y2={n.y + 70} stroke="var(--accent-dim)" strokeWidth="1.4" markerEnd="url(#arrow)" />}
             </g>
         ))}
 
-        {/* Output nodes */}
         {[
-            { y: 60, label: 'Approve', variant: 'success' },
-            { y: 140, label: 'Review queue', variant: 'warning' },
-            { y: 220, label: 'Block / hold', variant: 'danger' },
-            { y: 300, label: 'Feedback loop → retraining', variant: 'accent' },
+            { y: 60,  label: 'Approve',                       variant: 'success' },
+            { y: 140, label: 'Review queue',                  variant: 'warning' },
+            { y: 220, label: 'Block / hold',                  variant: 'danger'  },
+            { y: 300, label: 'Feedback loop → retraining',    variant: 'accent'  },
         ].map((n) => (
             <g key={n.label}>
                 <line x1="540" y1="180" x2="690" y2={n.y + 28} stroke="var(--accent-dim)" strokeWidth="1.4" markerEnd="url(#arrow)" opacity="0.6" />
                 <rect
-                    x="690"
-                    y={n.y}
-                    width="210"
-                    height="56"
-                    rx="10"
+                    x="690" y={n.y} width="210" height="56" rx="10"
                     fill="var(--surface-raised)"
                     stroke={n.variant === 'accent' ? 'var(--accent-dim)' : `var(--${n.variant})`}
                     strokeOpacity={n.variant === 'accent' ? 1 : 0.4}
@@ -463,7 +396,6 @@ const ArchitectureDiagram = () => (
             </g>
         ))}
 
-        {/* feedback loop curve */}
         <path d="M795 356 C 600 400, 430 400, 430 320" fill="none" stroke="var(--accent-dim)" strokeWidth="1.4" strokeDasharray="3 5" markerEnd="url(#arrow)" opacity="0.5" />
     </svg>
 );
@@ -471,7 +403,11 @@ const ArchitectureDiagram = () => (
 const PipelineRunner = ({ running, activeStage, results }) => (
     <div className="pipeline-runner">
         {pipelineStages.map((stage, i) => {
-            const status = !running && results === null ? 'idle' : i < activeStage || results ? 'done' : i === activeStage ? 'active' : 'pending';
+            const status =
+                !running && results === null ? 'idle'
+                    : i < activeStage || results  ? 'done'
+                        : i === activeStage           ? 'active'
+                            :                               'pending';
             return (
                 <div className={`pipeline-step pipeline-step-${status}`} key={stage.key}>
                     <div className="pipeline-step-marker">
@@ -505,11 +441,14 @@ const AIRiskEngine = () => {
     const [running, setRunning] = useState(false);
     const [activeStage, setActiveStage] = useState(-1);
     const [result, setResult] = useState(null);
+    const [animatedScore, setAnimatedScore] = useState(0);
     const [history, setHistory] = useState([]);
     const [feed, setFeed] = useState([]);
+    const [apiError, setApiError] = useState(null);
 
     const rngRef = useRef(seededRandom(20260615));
     const timersRef = useRef([]);
+    const animFrameRef = useRef(null);
 
     useEffect(() => {
         const rng = rngRef.current;
@@ -527,8 +466,10 @@ const AIRiskEngine = () => {
             };
         });
         setFeed(seedFeed);
-
-        return () => timersRef.current.forEach((t) => clearTimeout(t));
+        return () => {
+            timersRef.current.forEach((t) => clearTimeout(t));
+            if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+        };
     }, []);
 
     const distribution = useMemo(() => buildDistribution(seededRandom(7321)), []);
@@ -544,85 +485,133 @@ const AIRiskEngine = () => {
             transactionType: typeOptions[Math.floor(rng() * typeOptions.length)].value,
             amount: String(Math.round(20 + rng() * 14000)),
             currency: currencyOptions[Math.floor(rng() * currencyOptions.length)].value,
-            channel: channelOptions[Math.floor(rng() * channelOptions.length)].value,
-            hour: String(Math.floor(rng() * 24)),
-            fromAccountId: `acc_${Math.random().toString(16).slice(2, 8)}`,
-            toAccountId: `acc_${Math.random().toString(16).slice(2, 8)}`,
-            newBeneficiary: rng() > 0.6,
-            crossBorder: rng() > 0.75,
+            transactionChannel: channelOptions[Math.floor(rng() * channelOptions.length)].value,
+            fromAccountId: crypto.randomUUID(),
+            toAccountId: crypto.randomUUID(),
+            isNewBeneficiary: rng() > 0.6,
+            isCrossBorderTransaction: rng() > 0.75,
         });
     };
 
-    const runSimulation = () => {
+    // Animates the needle from 0 → targetScore using requestAnimationFrame
+    const animateNeedle = (targetScore) => {
+        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+        setAnimatedScore(0);
+        const duration = 900; // ms
+        const start = performance.now();
+        const tick = (now) => {
+            const t = Math.min((now - start) / duration, 1);
+            // ease-out cubic
+            const eased = 1 - Math.pow(1 - t, 3);
+            setAnimatedScore(eased * targetScore);
+            if (t < 1) {
+                animFrameRef.current = requestAnimationFrame(tick);
+            } else {
+                setAnimatedScore(targetScore);
+            }
+        };
+        animFrameRef.current = requestAnimationFrame(tick);
+    };
+
+    const runSimulation = async () => {
         if (running) return;
         timersRef.current.forEach((t) => clearTimeout(t));
         timersRef.current = [];
 
         setRunning(true);
         setResult(null);
-        setActiveStage(0);
+        setApiError(null);
+        setAnimatedScore(0); // reset needle to zero before call
 
+        // Animate pipeline stages visually while API call is in-flight
+        // Last stage completes only after backend responds
         let elapsed = 0;
-        pipelineStages.forEach((stage, i) => {
+        pipelineStages.slice(0, -1).forEach((stage, i) => {
             const duration = stage.ms[0] + rngRef.current() * (stage.ms[1] - stage.ms[0]);
             elapsed += duration;
-            const t = setTimeout(() => {
-                if (i < pipelineStages.length - 1) {
-                    setActiveStage(i + 1);
-                } else {
-                    finishSimulation();
-                }
-            }, elapsed);
+            const t = setTimeout(() => setActiveStage(i + 1), elapsed);
             timersRef.current.push(t);
         });
-    };
 
-    const finishSimulation = () => {
-        const rng = rngRef.current;
-        const score = computeFraudScore(form, rng);
-        const decision = decisionForScore(score);
-        const band = riskBand(score);
-        const reasons = pickReasonCodes(band, rng);
-
-        const features = [
-            { label: 'Amount vs. account baseline', value: clamp(0.1 + Number(form.amount) / 20000, 0.05, 0.95) },
-            { label: 'Beneficiary novelty', value: form.newBeneficiary ? 0.7 + rng() * 0.2 : 0.1 + rng() * 0.15 },
-            { label: 'Time-of-day anomaly', value: Number(form.hour) <= 5 ? 0.6 + rng() * 0.25 : 0.1 + rng() * 0.2 },
-            { label: 'Cross-border risk', value: form.crossBorder ? 0.65 + rng() * 0.25 : 0.08 + rng() * 0.1 },
-            { label: 'Network graph similarity', value: 0.1 + rng() * (band === 'high' ? 0.7 : 0.3) },
-            { label: 'Channel risk profile', value: form.channel === 'ATM' || form.channel === 'API' ? 0.35 + rng() * 0.2 : 0.1 + rng() * 0.15 },
-        ].sort((a, b) => b.value - a.value);
-
-        const newResult = {
-            score,
-            decision,
-            band,
-            reasons,
-            features,
-            latencyMs: Math.round(pipelineStages.reduce((acc, s) => acc + (s.ms[0] + s.ms[1]) / 2, 0)),
-            timestamp: new Date(),
+        // Build payload matching SimulateTransactionRequest exactly
+        const payload = {
+            simulationType: 'TRANSACTION',
+            transactionType: form.transactionType,
+            transactionChannel: form.transactionChannel,
+            amount: Number(form.amount),
+            currency: form.currency,
+            fromAccountId: form.fromAccountId,
+            toAccountId: form.toAccountId,
+            transactionTime: new Date().toISOString(), // Instant
+            isNewBeneficiary: form.isNewBeneficiary,
+            isCrossBorderTransaction: form.isCrossBorderTransaction,
         };
 
-        setResult(newResult);
-        setRunning(false);
-        setActiveStage(pipelineStages.length);
+        const t0 = performance.now();
+        try {
+            const response = await simulateTransaction(payload);
+            const latencyMs = Math.round(performance.now() - t0);
 
-        setHistory((prev) => [...prev.slice(1), score]);
-        setFeed((prev) => [
-            {
-                id: `sim_${Date.now()}`,
-                type: typeOptions.find((t) => t.value === form.transactionType)?.label || form.transactionType,
-                amount: Number(form.amount) || 0,
-                currency: form.currency,
+            // response.data matches SimulateTransactionResponse
+            const { transactionFraudScore, transactionFraudStatus } = response.data;
+            const score = Number(transactionFraudScore);
+
+            const decision = decisionFromStatus(transactionFraudStatus, score);
+            const band = riskBand(score);
+            const rng = rngRef.current;
+            const reasons = pickReasonCodes(band, rng);
+
+            const features = [
+                { label: 'Amount vs. account baseline', value: clamp(0.1 + Number(form.amount) / 20000, 0.05, 0.95) },
+                { label: 'Beneficiary novelty',         value: form.isNewBeneficiary ? 0.7 + rng() * 0.2 : 0.1 + rng() * 0.15 },
+                { label: 'Cross-border risk',           value: form.isCrossBorderTransaction ? 0.65 + rng() * 0.25 : 0.08 + rng() * 0.1 },
+                { label: 'Network graph similarity',    value: 0.1 + rng() * (band === 'high' ? 0.7 : 0.3) },
+                { label: 'Channel risk profile',        value: form.transactionChannel === 'ATM' || form.transactionChannel === 'API' ? 0.35 + rng() * 0.2 : 0.1 + rng() * 0.15 },
+            ].sort((a, b) => b.value - a.value);
+
+            const newResult = {
                 score,
                 decision,
-                time: new Date(),
-            },
-            ...prev,
-        ].slice(0, 8));
+                band,
+                reasons,
+                features,
+                latencyMs,
+                timestamp: new Date(),
+            };
+
+            setResult(newResult);
+            setActiveStage(pipelineStages.length); // mark all stages done
+
+            animateNeedle(score); // sweep needle from 0 to backend score
+
+            setHistory((prev) => [...prev.slice(1), score]);
+            setFeed((prev) => [
+                {
+                    id: `sim_${Date.now()}`,
+                    type: typeOptions.find((t) => t.value === form.transactionType)?.label || form.transactionType,
+                    amount: Number(form.amount) || 0,
+                    currency: form.currency,
+                    score,
+                    decision,
+                    time: new Date(),
+                },
+                ...prev,
+            ].slice(0, 8));
+        } catch (err) {
+            console.error('Simulation API error:', err);
+            setApiError('Failed to reach the scoring engine. Check your connection and try again.');
+            setActiveStage(-1);
+        } finally {
+            setRunning(false);
+        }
     };
 
-    const totalLatency = useMemo(() => Math.round(pipelineStages.reduce((acc, s) => acc + (s.ms[0] + s.ms[1]) / 2, 0)), []);
+    // Average latency shown in stat card — updates to reflect last real call if available
+    const totalLatency = useMemo(
+        () => Math.round(pipelineStages.reduce((acc, s) => acc + (s.ms[0] + s.ms[1]) / 2, 0)),
+        [],
+    );
+    const displayedLatency = result?.latencyMs ?? totalLatency;
 
     return (
         <div className="ai-engine-page">
@@ -650,14 +639,14 @@ const AIRiskEngine = () => {
                 </Card>
                 <Card className="ai-stat-card">
                     <span className="ai-stat-label">Avg. scoring latency</span>
-                    <span className="ai-stat-value mono">{totalLatency} ms</span>
-                    <Sparkline data={[640, 610, 590, 605, 580, 575, totalLatency]} />
+                    <span className="ai-stat-value mono">{displayedLatency} ms</span>
+                    <Sparkline data={[640, 610, 590, 605, 580, 575, displayedLatency]} />
                     <span className="ai-stat-foot">End-to-end, ingestion to decision</span>
                 </Card>
                 <Card className="ai-stat-card">
                     <span className="ai-stat-label">Flagged this session</span>
-                    <span className="ai-stat-value mono">{feed.filter((f) => f.decision.label !== 'APPROVE').length}</span>
-                    <Sparkline data={[1, 2, 1, 3, 2, 2, feed.filter((f) => f.decision.label !== 'APPROVE').length || 1]} danger />
+                    <span className="ai-stat-value mono">{feed.filter((f) => f.decision.variant !== 'success').length}</span>
+                    <Sparkline data={[1, 2, 1, 3, 2, 2, feed.filter((f) => f.decision.variant !== 'success').length || 1]} danger />
                     <span className="ai-stat-foot">Review + block decisions in simulator</span>
                 </Card>
                 <Card className="ai-stat-card">
@@ -678,6 +667,7 @@ const AIRiskEngine = () => {
             </div>
 
             <div className="simulator-grid">
+                {/* ── Form ── */}
                 <Card className="simulator-form">
                     <div className="simulator-form-header">
                         <h4>Transaction details</h4>
@@ -690,49 +680,103 @@ const AIRiskEngine = () => {
                     </div>
 
                     <div className="simulator-fields">
-                        <Select label="Transaction type" name="transactionType" value={form.transactionType} onChange={handleChange('transactionType')} options={typeOptions} />
+                        <Select
+                            label="Transaction type"
+                            name="transactionType"
+                            value={form.transactionType}
+                            onChange={handleChange('transactionType')}
+                            options={typeOptions}
+                        />
                         <div className="simulator-row">
-                            <Input label="Amount" name="amount" type="number" value={form.amount} onChange={handleChange('amount')} />
-                            <Select label="Currency" name="currency" value={form.currency} onChange={handleChange('currency')} options={currencyOptions} />
+                            <Input
+                                label="Amount"
+                                name="amount"
+                                type="number"
+                                value={form.amount}
+                                onChange={handleChange('amount')}
+                            />
+                            <Select
+                                label="Currency"
+                                name="currency"
+                                value={form.currency}
+                                onChange={handleChange('currency')}
+                                options={currencyOptions}
+                            />
                         </div>
                         <div className="simulator-row">
-                            <Input label="Sender account" name="fromAccountId" value={form.fromAccountId} onChange={handleChange('fromAccountId')} />
-                            <Input label="Receiver account" name="toAccountId" value={form.toAccountId} onChange={handleChange('toAccountId')} />
+                            <Input
+                                label="Sender account (UUID)"
+                                name="fromAccountId"
+                                value={form.fromAccountId}
+                                onChange={handleChange('fromAccountId')}
+                            />
+                            <Input
+                                label="Receiver account (UUID)"
+                                name="toAccountId"
+                                value={form.toAccountId}
+                                onChange={handleChange('toAccountId')}
+                            />
                         </div>
-                        <div className="simulator-row">
-                            <Select label="Channel" name="channel" value={form.channel} onChange={handleChange('channel')} options={channelOptions} />
-                            <Input label="Hour of day (0–23)" name="hour" type="number" value={form.hour} onChange={handleChange('hour')} />
-                        </div>
+                        <Select
+                            label="Channel"
+                            name="transactionChannel"
+                            value={form.transactionChannel}
+                            onChange={handleChange('transactionChannel')}
+                            options={channelOptions}
+                        />
 
                         <div className="simulator-toggles">
                             <label className="toggle-row">
-                                <input type="checkbox" checked={form.newBeneficiary} onChange={handleChange('newBeneficiary')} />
+                                <input
+                                    type="checkbox"
+                                    checked={form.isNewBeneficiary}
+                                    onChange={handleChange('isNewBeneficiary')}
+                                />
                                 <span>New beneficiary (first transaction to this receiver)</span>
                             </label>
                             <label className="toggle-row">
-                                <input type="checkbox" checked={form.crossBorder} onChange={handleChange('crossBorder')} />
+                                <input
+                                    type="checkbox"
+                                    checked={form.isCrossBorderTransaction}
+                                    onChange={handleChange('isCrossBorderTransaction')}
+                                />
                                 <span>Cross-border transaction</span>
                             </label>
                         </div>
                     </div>
 
-                    <Button onClick={runSimulation} loading={running} fullWidth icon={
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <path d="M5 3l14 9-14 9V3z" fill="currentColor" />
-                        </svg>
-                    }>
+                    <Button
+                        onClick={runSimulation}
+                        loading={running}
+                        fullWidth
+                        icon={
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path d="M5 3l14 9-14 9V3z" fill="currentColor" />
+                            </svg>
+                        }
+                    >
                         {running ? 'Scoring transaction…' : 'Run simulation'}
                     </Button>
                 </Card>
 
+                {/* ── Pipeline ── */}
                 <Card className="simulator-pipeline">
                     <h4>Live pipeline</h4>
                     <PipelineRunner running={running} activeStage={activeStage} results={result} />
                 </Card>
 
+                {/* ── Result ── */}
                 <Card className="simulator-result">
                     <h4>Result</h4>
-                    {!result ? (
+                    {apiError ? (
+                        <div className="result-empty result-error">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="9" stroke="var(--danger)" strokeWidth="1.5" />
+                                <path d="M12 8v4M12 16h.01" stroke="var(--danger)" strokeWidth="2" strokeLinecap="round" />
+                            </svg>
+                            <p>{apiError}</p>
+                        </div>
+                    ) : !result ? (
                         <div className="result-empty">
                             <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
                                 <path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -742,7 +786,8 @@ const AIRiskEngine = () => {
                     ) : (
                         <div className="result-content">
                             <div className="result-gauge-wrap">
-                                <ScoreGauge score={result.score} />
+                                {/* animatedScore drives needle sweep; score shows final text */}
+                                <ScoreGauge score={result.score} animatedScore={animatedScore} />
                                 <Badge variant={result.decision.variant}>{result.decision.label}</Badge>
                             </div>
                             <div className="result-meta">
@@ -851,8 +896,14 @@ const AIRiskEngine = () => {
                             <tr key={f.id}>
                                 <td className="mono">{f.id}</td>
                                 <td><Badge variant="default">{f.type}</Badge></td>
-                                <td className="mono">{f.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {f.currency}</td>
-                                <td><Badge variant={riskBand(f.score) === 'high' ? 'danger' : riskBand(f.score) === 'medium' ? 'warning' : 'success'}>{formatScore(f.score)}</Badge></td>
+                                <td className="mono">
+                                    {f.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {f.currency}
+                                </td>
+                                <td>
+                                    <Badge variant={riskBand(f.score) === 'high' ? 'danger' : riskBand(f.score) === 'medium' ? 'warning' : 'success'}>
+                                        {formatScore(f.score)}
+                                    </Badge>
+                                </td>
                                 <td><Badge variant={f.decision.variant}>{f.decision.label}</Badge></td>
                                 <td className="mono">{f.time.toLocaleTimeString()}</td>
                             </tr>
@@ -861,24 +912,6 @@ const AIRiskEngine = () => {
                     </table>
                 )}
             </Card>
-
-            {/* Future APIs */}
-            <div className="section-heading">
-                <h3>Planned API endpoints</h3>
-                <p>These endpoints will connect the AI risk engine to live bank systems. Not yet available — for reference only.</p>
-            </div>
-
-            <div className="api-grid">
-                {futureApis.map((api) => (
-                    <Card className="api-card" key={api.name}>
-                        <div className="api-card-header">
-                            <span className="mono api-name">{api.name}</span>
-                            <Badge variant="default">planned</Badge>
-                        </div>
-                        <p>{api.desc}</p>
-                    </Card>
-                ))}
-            </div>
         </div>
     );
 };
