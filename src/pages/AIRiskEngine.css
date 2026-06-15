@@ -4,7 +4,9 @@
     gap: 32px;
 }
 
-/* Page header (shared pattern) */
+/* ------------------------------------------------------------------ */
+/* Page header (shared pattern)                                         */
+/* ------------------------------------------------------------------ */
 
 .page-header {
     display: flex;
@@ -182,7 +184,9 @@
     cursor: pointer;
 }
 
-/* Pipeline */
+/* ------------------------------------------------------------------ */
+/* Pipeline                                                             */
+/* ------------------------------------------------------------------ */
 
 .pipeline-runner {
     display: flex;
@@ -281,7 +285,9 @@
     background: var(--accent-dim);
 }
 
-/* Result panel */
+/* ------------------------------------------------------------------ */
+/* Result panel                                                         */
+/* ------------------------------------------------------------------ */
 
 .result-empty {
     flex: 1;
@@ -302,6 +308,16 @@
 .result-empty p {
     font-size: 13px;
     line-height: 1.5;
+}
+
+/* Error state — same layout as empty but danger-tinted text */
+.result-error p {
+    color: var(--danger);
+    opacity: 0.85;
+}
+
+.result-error svg {
+    opacity: 1;
 }
 
 .result-content {
@@ -336,6 +352,19 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+}
+
+.meta-label {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.meta-value {
+    font-size: 13px;
+    color: var(--text-primary);
 }
 
 .result-reasons {
@@ -524,39 +553,8 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* API list                                                             */
+/* Animations                                                           */
 /* ------------------------------------------------------------------ */
-
-.api-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 16px;
-}
-
-.api-card {
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.api-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-.api-name {
-    font-size: 13px;
-    color: var(--accent);
-}
-
-.api-card p {
-    font-size: 13px;
-    color: var(--text-secondary);
-    line-height: 1.5;
-}
 
 @keyframes spin {
     to {
