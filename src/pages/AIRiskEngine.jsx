@@ -16,7 +16,6 @@ const typeOptions = [
     { value: 'PAYMENT', label: 'Payment' },
     { value: 'WITHDRAWAL', label: 'Withdrawal' },
     { value: 'DEPOSIT', label: 'Deposit' },
-    { value: 'CARD_PURCHASE', label: 'Card purchase' },
 ];
 
 const currencyOptions = [
@@ -27,11 +26,11 @@ const currencyOptions = [
 ];
 
 const channelOptions = [
-    { value: 'MOBILE', label: 'Mobile app' },
-    { value: 'WEB', label: 'Web banking' },
+    { value: 'MOBILE_APP', label: 'Mobile app' },
+    { value: 'WEB_BANKING', label: 'Web banking' },
     { value: 'ATM', label: 'ATM' },
-    { value: 'POS', label: 'Point of sale' },
-    { value: 'API', label: 'Bank API' },
+    { value: 'POINT_OF_SALE', label: 'Point of sale' },
+    { value: 'BANK_API', label: 'Bank API' },
 ];
 
 const pipelineStages = [
