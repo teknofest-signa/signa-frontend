@@ -4,7 +4,7 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
-import { simulateTransaction } from '../api/simulation';
+import { simulateTransaction, getAllSimulationTransactions } from '../api/simulation';
 import './AIRiskEngine.css';
 
 /* ------------------------------------------------------------------ */
@@ -164,11 +164,36 @@ const initialFormState = {
     transactionType: 'TRANSFER',
     amount: '2500',
     currency: 'USD',
-    transactionChannel: 'MOBILE',
+    transactionChannel: 'MOBILE_APP',
     fromAccountId: crypto.randomUUID(),
     toAccountId: crypto.randomUUID(),
     isNewBeneficiary: false,
     isCrossBorderTransaction: false,
+};
+
+const feedPageSizeOptions = [
+    { value: '10', label: '10 / page' },
+    { value: '20', label: '20 / page' },
+    { value: '50', label: '50 / page' },
+    { value: '100', label: '100 / page' },
+];
+
+const buildPageRange = (current, total) => {
+    if (total <= 7) return [...Array(total).keys()];
+
+    const pages = new Set([0, total - 1, current]);
+    pages.add(Math.max(0, current - 1));
+    pages.add(Math.min(total - 1, current + 1));
+
+    const sorted = [...pages].sort((a, b) => a - b);
+    const result = [];
+    for (let i = 0; i < sorted.length; i++) {
+        if (i > 0 && sorted[i] - sorted[i - 1] > 1) {
+            result.push('…');
+        }
+        result.push(sorted[i]);
+    }
+    return result;
 };
 
 /* ------------------------------------------------------------------ */
@@ -442,8 +467,16 @@ const AIRiskEngine = () => {
     const [result, setResult] = useState(null);
     const [animatedScore, setAnimatedScore] = useState(0);
     const [history, setHistory] = useState([]);
-    const [feed, setFeed] = useState([]);
     const [apiError, setApiError] = useState(null);
+
+    // Recent simulated transactions feed (paginated, from backend)
+    const [feed, setFeed] = useState([]);
+    const [feedLoading, setFeedLoading] = useState(true);
+    const [feedError, setFeedError] = useState('');
+    const [feedPage, setFeedPage] = useState(0);
+    const [feedPageSize, setFeedPageSize] = useState(10);
+    const [feedTotalPages, setFeedTotalPages] = useState(0);
+    const [feedTotalElements, setFeedTotalElements] = useState(0);
 
     const rngRef = useRef(seededRandom(20260615));
     const timersRef = useRef([]);
@@ -452,19 +485,6 @@ const AIRiskEngine = () => {
     useEffect(() => {
         const rng = rngRef.current;
         setHistory(buildScoreHistory(rng));
-        const seedFeed = Array.from({ length: 6 }, (_, i) => {
-            const score = clamp(0.05 + rng() * (rng() > 0.85 ? 0.9 : 0.4), 0.01, 0.98);
-            return {
-                id: `sim_${Date.now() - i * 90000}_${i}`,
-                type: typeOptions[Math.floor(rng() * typeOptions.length)].label,
-                amount: Math.round(50 + rng() * 9000),
-                currency: 'USD',
-                score,
-                decision: decisionForScore(score),
-                time: new Date(Date.now() - i * 90000),
-            };
-        });
-        setFeed(seedFeed);
         return () => {
             timersRef.current.forEach((t) => clearTimeout(t));
             if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -472,6 +492,39 @@ const AIRiskEngine = () => {
     }, []);
 
     const distribution = useMemo(() => buildDistribution(seededRandom(7321)), []);
+
+    const fetchFeed = async (targetPage, targetSize) => {
+        setFeedLoading(true);
+        setFeedError('');
+        try {
+            const { data } = await getAllSimulationTransactions(targetPage, targetSize);
+            const content = Array.isArray(data) ? data : data?.content || [];
+            setFeed(content);
+            setFeedTotalPages(data?.totalPages ?? (content.length < targetSize && targetPage === 0 ? 1 : targetPage + 1));
+            setFeedTotalElements(data?.totalElements ?? content.length);
+        } catch (err) {
+            setFeedError('Could not load simulated transactions. Please try again.');
+            setFeed([]);
+            setFeedTotalPages(0);
+            setFeedTotalElements(0);
+        } finally {
+            setFeedLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchFeed(feedPage, feedPageSize);
+    }, [feedPage, feedPageSize]);
+
+    const handleFeedPageSizeChange = (e) => {
+        setFeedPageSize(Number(e.target.value));
+        setFeedPage(0);
+    };
+
+    const goToFeedPage = (target) => {
+        if (target < 0 || target > feedTotalPages - 1 || target === feedPage) return;
+        setFeedPage(target);
+    };
 
     const handleChange = (field) => (e) => {
         const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -584,18 +637,10 @@ const AIRiskEngine = () => {
             animateNeedle(score); // sweep needle from 0 to backend score
 
             setHistory((prev) => [...prev.slice(1), score]);
-            setFeed((prev) => [
-                {
-                    id: `sim_${Date.now()}`,
-                    type: typeOptions.find((t) => t.value === form.transactionType)?.label || form.transactionType,
-                    amount: Number(form.amount) || 0,
-                    currency: form.currency,
-                    score,
-                    decision,
-                    time: new Date(),
-                },
-                ...prev,
-            ].slice(0, 8));
+
+            // Refresh the feed so the newly created simulation transaction appears
+            setFeedPage(0);
+            fetchFeed(0, feedPageSize);
         } catch (err) {
             console.error('Simulation API error:', err);
             setApiError('Failed to reach the scoring engine. Check your connection and try again.');
@@ -611,6 +656,12 @@ const AIRiskEngine = () => {
         [],
     );
     const displayedLatency = result?.latencyMs ?? totalLatency;
+
+    const flaggedCount = feed.filter((f) => decisionFromStatus(f.transactionFraudStatus, Number(f.transactionFraudScore)).variant !== 'success').length;
+
+    const feedRangeStart = feedTotalElements === 0 ? 0 : feedPage * feedPageSize + 1;
+    const feedRangeEnd = Math.min(feedTotalElements, feedPage * feedPageSize + feed.length);
+    const feedPageRange = buildPageRange(feedPage, feedTotalPages);
 
     return (
         <div className="ai-engine-page">
@@ -643,10 +694,10 @@ const AIRiskEngine = () => {
                     <span className="ai-stat-foot">End-to-end, ingestion to decision</span>
                 </Card>
                 <Card className="ai-stat-card">
-                    <span className="ai-stat-label">Flagged this session</span>
-                    <span className="ai-stat-value mono">{feed.filter((f) => f.decision.variant !== 'success').length}</span>
-                    <Sparkline data={[1, 2, 1, 3, 2, 2, feed.filter((f) => f.decision.variant !== 'success').length || 1]} danger />
-                    <span className="ai-stat-foot">Review + block decisions in simulator</span>
+                    <span className="ai-stat-label">Flagged this page</span>
+                    <span className="ai-stat-value mono">{flaggedCount}</span>
+                    <Sparkline data={[1, 2, 1, 3, 2, 2, flaggedCount || 1]} danger />
+                    <span className="ai-stat-foot">Review + block decisions on current page</span>
                 </Card>
                 <Card className="ai-stat-card">
                     <span className="ai-stat-label">Active model version</span>
@@ -870,13 +921,26 @@ const AIRiskEngine = () => {
             {/* Recent simulated activity */}
             <div className="section-heading">
                 <h3>Recent simulated transactions</h3>
-                <p>Results from this session, most recent first.</p>
+                <p>Results from the simulation engine, most recent first.</p>
             </div>
 
             <Card className="feed-card">
-                {feed.length === 0 ? (
+                {feedLoading ? (
                     <div className="result-empty">
-                        <p>No simulations run yet this session.</p>
+                        <span className="loading-spinner" />
+                        <p>Loading simulated transactions…</p>
+                    </div>
+                ) : feedError ? (
+                    <div className="result-empty result-error">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="9" stroke="var(--danger)" strokeWidth="1.5" />
+                            <path d="M12 8v5M12 16h.01" stroke="var(--danger)" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                        <p>{feedError}</p>
+                    </div>
+                ) : feed.length === 0 ? (
+                    <div className="result-empty">
+                        <p>No simulations run yet.</p>
                     </div>
                 ) : (
                     <table className="feed-table">
@@ -891,24 +955,80 @@ const AIRiskEngine = () => {
                         </tr>
                         </thead>
                         <tbody>
-                        {feed.map((f) => (
-                            <tr key={f.id}>
-                                <td className="mono">{f.id}</td>
-                                <td><Badge variant="default">{f.type}</Badge></td>
-                                <td className="mono">
-                                    {f.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {f.currency}
-                                </td>
-                                <td>
-                                    <Badge variant={riskBand(f.score) === 'high' ? 'danger' : riskBand(f.score) === 'medium' ? 'warning' : 'success'}>
-                                        {formatScore(f.score)}
-                                    </Badge>
-                                </td>
-                                <td><Badge variant={f.decision.variant}>{f.decision.label}</Badge></td>
-                                <td className="mono">{f.time.toLocaleTimeString()}</td>
-                            </tr>
-                        ))}
+                        {feed.map((f) => {
+                            const score = Number(f.transactionFraudScore);
+                            const decision = decisionFromStatus(f.transactionFraudStatus, score);
+                            return (
+                                <tr key={f.id}>
+                                    <td className="mono">{f.id}</td>
+                                    <td><Badge variant="default">{f.transactionType?.replace(/_/g, ' ') || '—'}</Badge></td>
+                                    <td className="mono">
+                                        {Number(f.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {f.currency}
+                                    </td>
+                                    <td>
+                                        <Badge variant={riskBand(score) === 'high' ? 'danger' : riskBand(score) === 'medium' ? 'warning' : 'success'}>
+                                            {formatScore(score)}
+                                        </Badge>
+                                    </td>
+                                    <td><Badge variant={decision.variant}>{decision.label}</Badge></td>
+                                    <td className="mono">{f.createdAt ? new Date(f.createdAt).toLocaleTimeString() : '—'}</td>
+                                </tr>
+                            );
+                        })}
                         </tbody>
                     </table>
+                )}
+
+                {!feedLoading && !feedError && feed.length > 0 && (
+                    <div className="transactions-pagination">
+                        <div className="pagination-info">
+                            Showing <strong>{feedRangeStart}</strong>–<strong>{feedRangeEnd}</strong> of <strong>{feedTotalElements}</strong>
+                        </div>
+
+                        <div className="pagination-controls">
+                            <button className="pager-btn" onClick={() => goToFeedPage(0)} disabled={feedPage === 0} aria-label="First page">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </button>
+                            <button className="pager-btn" onClick={() => goToFeedPage(feedPage - 1)} disabled={feedPage === 0} aria-label="Previous page">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path d="M14 17l-5-5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </button>
+
+                            <div className="pager-pages">
+                                {feedPageRange.map((p, idx) =>
+                                    p === '…' ? (
+                                        <span className="pager-ellipsis" key={`ellipsis-${idx}`}>…</span>
+                                    ) : (
+                                        <button
+                                            key={p}
+                                            className={`pager-page ${p === feedPage ? 'pager-page-active' : ''}`}
+                                            onClick={() => goToFeedPage(p)}
+                                        >
+                                            {p + 1}
+                                        </button>
+                                    )
+                                )}
+                            </div>
+
+                            <button className="pager-btn" onClick={() => goToFeedPage(feedPage + 1)} disabled={feedPage >= feedTotalPages - 1} aria-label="Next page">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path d="M10 17l5-5-5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </button>
+                            <button className="pager-btn" onClick={() => goToFeedPage(feedTotalPages - 1)} disabled={feedPage >= feedTotalPages - 1} aria-label="Last page">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path d="M6 17l5-5-5-5M13 17l5-5-5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="pagination-size">
+                            <Select name="feed-page-size" value={String(feedPageSize)} onChange={handleFeedPageSizeChange} options={feedPageSizeOptions} />
+                        </div>
+                    </div>
                 )}
             </Card>
         </div>
