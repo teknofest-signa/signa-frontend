@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
-import { getAllCustomers, createCustomer } from '../api/customers';
+import { getAllCustomers, createCustomer, blockCustomer } from '../api/customers';
 import { loadBankOptions } from '../api/bankCache';
 import './Customers.css';
 
@@ -46,6 +46,9 @@ const Customers = () => {
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState('');
 
+    // Server-driven pagination — page/pageSize are the source of truth and
+    // every page change re-fetches from the API. Nothing client-side filters
+    // the `customers` array, so the controls always match what's rendered.
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(10);
     const [totalPages, setTotalPages] = useState(0);
@@ -61,6 +64,10 @@ const Customers = () => {
     const [bankOptions, setBankOptions] = useState([]);
     const [bankOptionsLoading, setBankOptionsLoading] = useState(false);
     const [bankOptionsError, setBankOptionsError] = useState('');
+
+    const [blockTarget, setBlockTarget] = useState(null);
+    const [blockLoading, setBlockLoading] = useState(false);
+    const [blockError, setBlockError] = useState('');
 
     const fetchCustomers = async (targetPage, targetSize) => {
         setLoading(true);
@@ -154,6 +161,26 @@ const Customers = () => {
         }
     };
 
+    const closeBlockModal = () => {
+        setBlockTarget(null);
+        setBlockError('');
+    };
+
+    const handleBlock = async () => {
+        if (!blockTarget) return;
+        setBlockError('');
+        setBlockLoading(true);
+        try {
+            await blockCustomer(blockTarget.id);
+            closeBlockModal();
+            fetchCustomers(page, pageSize);
+        } catch (err) {
+            setBlockError(err?.response?.data?.message || 'Could not block this customer. Please try again.');
+        } finally {
+            setBlockLoading(false);
+        }
+    };
+
     return (
         <div className="customers-page">
             <div className="page-header">
@@ -200,6 +227,7 @@ const Customers = () => {
                             <th>Bank</th>
                             <th>Status</th>
                             <th>Registered</th>
+                            <th aria-label="actions"></th>
                         </tr>
                         </thead>
                         <tbody>
@@ -224,6 +252,23 @@ const Customers = () => {
                                 </td>
                                 <td className="mono customer-date">
                                     {customer.createdAt ? new Date(customer.createdAt).toLocaleDateString() : '—'}
+                                </td>
+                                <td>
+                                    <div className="row-actions">
+                                        {customer.customerStatus !== 'BLOCKED' && (
+                                            <button
+                                                className="row-action row-action-danger"
+                                                onClick={() => setBlockTarget(customer)}
+                                                aria-label="Block customer"
+                                                title="Block customer"
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+                                                    <path d="M6.5 6.5l11 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                                                </svg>
+                                            </button>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -287,8 +332,7 @@ const Customers = () => {
             <Modal open={registerOpen} onClose={closeRegisterModal} title="Register a customer">
                 <form className="invite-form" onSubmit={handleRegister}>
                     <p className="invite-desc">
-                        Register a customer under a member bank. This calls a placeholder endpoint until the
-                        customers API is available.
+                        Register a customer under a member bank.
                     </p>
 
                     {registerError && <div className="invite-message invite-message-error">{registerError}</div>}
@@ -347,6 +391,28 @@ const Customers = () => {
                         </Button>
                     </div>
                 </form>
+            </Modal>
+
+            <Modal open={!!blockTarget} onClose={closeBlockModal} title="Block customer">
+                <div className="delete-confirm">
+                    <p>
+                        Block <strong>{blockTarget?.name}</strong>? This sets their status to <strong>Blocked</strong>,
+                        and suspends every other customer record across member banks that shares the same hashed
+                        identity. This reflects how the cross-bank fraud signal is meant to propagate, and it cannot
+                        be undone from here.
+                    </p>
+
+                    {blockError && <div className="invite-message invite-message-error">{blockError}</div>}
+
+                    <div className="invite-actions">
+                        <Button variant="ghost" onClick={closeBlockModal}>
+                            Cancel
+                        </Button>
+                        <Button variant="danger" loading={blockLoading} onClick={handleBlock}>
+                            Block customer
+                        </Button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

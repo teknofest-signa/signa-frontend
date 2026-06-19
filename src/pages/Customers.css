@@ -73,6 +73,82 @@
     white-space: nowrap;
 }
 
+.row-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.row-action {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.row-action:hover {
+    color: var(--accent);
+    border-color: var(--accent-dim);
+    background: var(--accent-glow);
+}
+
+.row-action-danger:hover {
+    color: var(--danger);
+    border-color: var(--danger-dim);
+    background: rgba(248, 113, 113, 0.06);
+}
+
+.invite-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.invite-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.invite-message {
+    font-size: 13px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+}
+
+.invite-message-error {
+    background: rgba(248, 113, 113, 0.08);
+    border-color: rgba(248, 113, 113, 0.25);
+    color: var(--danger);
+}
+
+.invite-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.delete-confirm {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.delete-confirm p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.delete-confirm strong {
+    color: var(--text-primary);
+}
+
 .customers-empty {
     display: flex;
     flex-direction: column;
