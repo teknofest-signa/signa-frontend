@@ -12,18 +12,13 @@ const navItems = [
             { to: '/banks', label: 'Banks', icon: 'bank' },
             { to: '/transactions', label: 'Transactions', icon: 'pulse' },
             { to: '/ai-risk-engine', label: 'AI risk engine', icon: 'shield' },
+            { to: '/customers', label: 'Customers', icon: 'users' },
         ],
     },
     {
         section: 'Access control',
         items: [{ to: '/admins', label: 'Manage admins', icon: 'users', requireSuperAdmin: true }],
-    },
-    {
-        section: 'Coming soon',
-        items: [
-            { to: '#', label: 'Blocked users', icon: 'lock', disabled: true },
-        ],
-    },
+    }
 ];
 
 const icons = {
