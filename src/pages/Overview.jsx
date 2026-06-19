@@ -14,7 +14,7 @@ const comingSoonModules = [
     { name: 'Banks', desc: 'Connected institutions and their network status.', icon: 'bank', to: '/banks' },
     { name: 'Transactions', desc: 'Live stream of transactions analyzed by the engine.', icon: 'pulse', to: '/transactions' },
     { name: 'AI risk engine', desc: 'Fraud scoring, model performance, and alerts.', icon: 'shield', to: '/ai-risk-engine' },
-    { name: 'Blocked users', desc: 'Cross-bank hashed user blocklist and history.', icon: 'lock' },
+    { name: 'Customers', desc: 'Cross-bank hashed user blocklist and history.', icon: 'lock', to: '/customers'},
 ];
 
 const moduleIcons = {
