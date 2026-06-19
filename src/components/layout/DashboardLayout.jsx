@@ -7,6 +7,10 @@ import './DashboardLayout.css';
 const titles = {
     '/': 'Overview',
     '/admins': 'Manage admins',
+    '/banks': 'Banks',
+    '/customers': 'Customers',
+    '/transactions': 'Transactions',
+    '/ai-risk-engine': 'AI risk engine',
 };
 
 const DashboardLayout = () => {

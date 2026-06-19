@@ -7,6 +7,7 @@ import Register from './pages/Register';
 import Overview from './pages/Overview';
 import ManageAdmins from './pages/ManageAdmins';
 import Banks from './pages/Banks';
+import Customers from './pages/Customers';
 import Transactions from './pages/Transactions';
 import AIRiskEngine from './pages/AIRiskEngine';
 
@@ -48,6 +49,7 @@ const App = () => {
                         <Route path="banks" element={<Banks />}/>
                         <Route path="transactions" element={<Transactions />} />
                         <Route path="ai-risk-engine" element={<AIRiskEngine />} />
+                        <Route path="customers" element={<Customers />}/>
                     </Route>
 
                     <Route path="*" element={<Navigate to="/" replace />} />

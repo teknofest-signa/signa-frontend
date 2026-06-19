@@ -1,0 +1,269 @@
+.customers-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.customers-card {
+    overflow: hidden;
+}
+
+.customers-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.customers-table th {
+    text-align: left;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-soft);
+    white-space: nowrap;
+}
+
+.customers-table td {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 14px;
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
+.customers-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.customers-table tbody tr:hover {
+    background: var(--surface-raised);
+}
+
+.customer-identity {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.customer-name {
+    font-weight: 500;
+}
+
+.customer-id {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.customer-bank {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.customer-bank-id {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.customer-date {
+    color: var(--text-secondary);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.customers-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 56px 24px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.customers-empty p {
+    font-size: 14px;
+}
+
+.loading-spinner {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Pagination footer — shared visual language with Transactions page */
+
+.customers-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border-soft);
+}
+
+.pagination-info {
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.pagination-info strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.pager-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.pager-btn:hover:not(:disabled) {
+    color: var(--accent);
+    border-color: var(--accent-dim);
+    background: var(--accent-glow);
+}
+
+.pager-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.pager-pages {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 4px;
+}
+
+.pager-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 6px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-family: var(--font-mono);
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.pager-page:hover {
+    color: var(--text-primary);
+    background: var(--surface-raised);
+}
+
+.pager-page-active {
+    color: var(--accent);
+    border-color: var(--accent-dim);
+    background: var(--accent-glow);
+}
+
+.pager-ellipsis {
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 0 2px;
+    font-family: var(--font-mono);
+}
+
+.pagination-size .field-input {
+    padding: 7px 12px;
+    font-size: 13px;
+}
+
+.pagination-size .field-select {
+    padding-right: 30px;
+}
+
+.pagination-size .select-chevron {
+    right: 10px;
+}
+
+/* Register-customer modal */
+
+.bank-select-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.bank-select-row .field {
+    flex: 1;
+    min-width: 0;
+}
+
+.bank-refresh {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.bank-refresh:hover:not(:disabled) {
+    color: var(--accent);
+    border-color: var(--accent-dim);
+    background: var(--accent-glow);
+}
+
+.bank-refresh:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+    .customers-table {
+        display: block;
+        overflow-x: auto;
+    }
+
+    .customers-pagination {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .pagination-controls {
+        order: -1;
+    }
+}

@@ -4,6 +4,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import { getBanks, createBank, deleteBank, uploadBankLogo } from '../api/banks';
+import { cacheBankList } from '../api/bankCache';
 import './Banks.css';
 
 const Banks = () => {
@@ -69,7 +70,9 @@ const Banks = () => {
         setLoadError('');
         try {
             const { data } = await getBanks();
-            setBanks(Array.isArray(data) ? data : data?.content || []);
+            const list = Array.isArray(data) ? data : data?.content || [];
+            setBanks(list);
+            cacheBankList(list);
         } catch (err) {
             setLoadError('Could not load banks. Please try again.');
             setBanks([]);
