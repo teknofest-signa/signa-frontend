@@ -4,6 +4,8 @@ import ProtectedRoute from './components/layout/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Overview from './pages/Overview';
 import ManageAdmins from './pages/ManageAdmins';
 import Banks from './pages/Banks';
@@ -25,6 +27,8 @@ const App = () => {
                 <Routes>
                     <Route path="/login" element={<LoginRoute />} />
                     <Route path="/admin-register" element={<Register />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
 
                     <Route
                         path="/"
@@ -46,10 +50,10 @@ const App = () => {
                     </Route>
 
                     <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-                        <Route path="banks" element={<Banks />}/>
+                        <Route path="banks" element={<Banks />} />
                         <Route path="transactions" element={<Transactions />} />
                         <Route path="ai-risk-engine" element={<AIRiskEngine />} />
-                        <Route path="customers" element={<Customers />}/>
+                        <Route path="customers" element={<Customers />} />
                     </Route>
 
                     <Route path="*" element={<Navigate to="/" replace />} />

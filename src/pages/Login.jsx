@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
@@ -68,16 +68,21 @@ const Login = () => {
                         required
                     />
 
-                    <Input
-                        label="Password"
-                        type="password"
-                        name="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        autoComplete="current-password"
-                        required
-                    />
+                    <div>
+                        <Input
+                            label="Password"
+                            type="password"
+                            name="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                            autoComplete="current-password"
+                            required
+                        />
+                        <Link to="/forgot-password" className="auth-forgot-link">
+                            Forgot password?
+                        </Link>
+                    </div>
 
                     <Button type="submit" fullWidth loading={loading} className="auth-submit">
                         Sign In
