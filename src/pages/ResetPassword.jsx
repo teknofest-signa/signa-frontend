@@ -50,11 +50,6 @@ const ResetPassword = () => {
             return;
         }
 
-        if (password.length < 8) {
-            setError('Password must be at least 8 characters.');
-            return;
-        }
-
         setLoading(true);
         try {
             await resetPassword(token, password);
@@ -119,7 +114,7 @@ const ResetPassword = () => {
                                 name="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Min. 8 characters"
+                                placeholder="Enter a new password"
                                 autoComplete="new-password"
                                 required
                             />
