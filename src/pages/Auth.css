@@ -92,6 +92,7 @@
 .auth-heading p {
     font-size: 14px;
     color: var(--text-secondary);
+    line-height: 1.55;
 }
 
 .auth-form {
@@ -112,8 +113,34 @@
     border-radius: var(--radius-sm);
 }
 
+.auth-success {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(74, 222, 128, 0.08);
+    border: 1px solid rgba(74, 222, 128, 0.22);
+    color: var(--success);
+    font-size: 13px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 20px;
+}
+
 .auth-submit {
     margin-top: 4px;
+}
+
+.auth-back-link {
+    display: inline-block;
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.15s;
+}
+
+.auth-back-link:hover {
+    color: var(--accent);
 }
 
 .auth-footer {
@@ -122,6 +149,20 @@
     font-size: 12px;
     color: var(--text-muted);
     font-family: var(--font-mono);
+}
+
+.auth-forgot-link {
+    display: block;
+    text-align: right;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-decoration: none;
+    margin-top: -8px;
+    transition: color 0.15s;
+}
+
+.auth-forgot-link:hover {
+    color: var(--accent);
 }
 
 @keyframes ring-pulse {
