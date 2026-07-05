@@ -130,6 +130,29 @@
     margin-top: 4px;
 }
 
+/* Password field wrapper: stacks Input then the forgot link flush right */
+.auth-password-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+}
+
+.auth-forgot-link {
+    align-self: flex-end;
+    margin-top: 7px;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.15s;
+    line-height: 1;
+}
+
+.auth-forgot-link:hover {
+    color: var(--accent);
+}
+
+/* Back link used on forgot/reset pages */
 .auth-back-link {
     display: inline-block;
     margin-top: 20px;
@@ -149,20 +172,6 @@
     font-size: 12px;
     color: var(--text-muted);
     font-family: var(--font-mono);
-}
-
-.auth-forgot-link {
-    display: block;
-    text-align: right;
-    font-size: 12px;
-    color: var(--text-muted);
-    text-decoration: none;
-    margin-top: -8px;
-    transition: color 0.15s;
-}
-
-.auth-forgot-link:hover {
-    color: var(--accent);
 }
 
 @keyframes ring-pulse {

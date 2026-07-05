@@ -68,7 +68,7 @@ const Login = () => {
                         required
                     />
 
-                    <div>
+                    <div className="auth-password-field">
                         <Input
                             label="Password"
                             type="password"
